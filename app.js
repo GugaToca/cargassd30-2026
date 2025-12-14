@@ -1,41 +1,38 @@
-// app.js
-
-let chartCargasDia = null;
-let chartVolumesPedidos = null;
-
+// ==========================
+// IMPORTS FIREBASE
+// ==========================
 import { auth, db } from "./firebase-config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+import {
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
 import {
   collection,
   addDoc,
   getDocs,
   doc,
-  updateDoc,
+  getDoc,
+  setDoc,
   deleteDoc,
   query,
   orderBy,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-import { logout } from "./auth.js";
-
+// ==========================
+// ESTADO GLOBAL
+// ==========================
 let currentUser = null;
 let cargas = [];
-let cargaEmEdicaoId = null;
 
-const form = document.getElementById("carga-form");
-const listEl = document.getElementById("cargas-list");
-const filtroDataEl = document.getElementById("filtro-data");
-const filtroBuscaEl = document.getElementById("filtro-busca");
-const totalCargasEl = document.getElementById("total-cargas");
-const totalVolumesEl = document.getElementById("total-volumes");
-const totalPedidosEl = document.getElementById("total-pedidos");
-const btnExportar = document.getElementById("btn-exportar");
-const btnLimparFiltros = document.getElementById("btn-limpar-filtros");
-const btnLogout = document.getElementById("logout-header");
-const usuarioNomeEl = document.getElementById("usuario-nome");
+let chartCargasDia = null;
+let chartVolumesPedidos = null;
 
-// Protege a rota e carrega dados do usuário
+// ==========================
+// AUTH
+// ==========================
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "login.html";
@@ -43,497 +40,225 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   currentUser = user;
-  usuarioNomeEl.textContent = user.displayName || user.email;
+  document.getElementById("usuario-nome").textContent =
+    user.displayName || "Usuário";
 
-  init();
+  await carregarCargas();
 });
 
-function init() {
-  const hoje = new Date().toISOString().slice(0, 10);
-  if (form && form.data) {
-    form.data.value = hoje;
-  }
+// ==========================
+// NAVEGAÇÃO SPA
+// ==========================
+document.querySelectorAll(".nav-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".nav-btn")
+      .forEach(b => b.classList.remove("nav-active"));
+    btn.classList.add("nav-active");
 
-  form.addEventListener("submit", handleSubmit);
-  filtroDataEl.addEventListener("change", renderCargas);
-  filtroBuscaEl.addEventListener("input", renderCargas);
-  btnExportar.addEventListener("click", exportarPDF);
-  btnLimparFiltros.addEventListener("click", (e) => {
-    e.preventDefault();
-    filtroDataEl.value = "";
-    filtroBuscaEl.value = "";
-    renderCargas();
+    document.querySelectorAll(".screen")
+      .forEach(s => s.classList.remove("screen-active"));
+
+    const target = btn.dataset.screen;
+    document.getElementById(`screen-${target}`)
+      .classList.add("screen-active");
+
+    if (target === "config") {
+      carregarConfiguracoes();
+    }
+
+    if (target === "relatorios") {
+      setTimeout(() => {
+        gerarRelatorio();
+      }, 100);
+    }
   });
+});
 
-  btnLogout.addEventListener("click", async () => {
-    await logout();
-  });
+// ==========================
+// LOGOUT
+// ==========================
+document.getElementById("logout-header").onclick = async () => {
+  await signOut(auth);
+  window.location.href = "login.html";
+};
 
-  listEl.addEventListener("click", handleListClick);
+// ==========================
+// CARGAS — CRUD
+// ==========================
+const form = document.getElementById("carga-form");
+const listEl = document.getElementById("cargas-list");
 
-  // BOTÃO GERAR RELATÓRIO
-const btnGerarRelatorio = document.getElementById("btn-gerar-relatorio");
-if (btnGerarRelatorio) {
-  btnGerarRelatorio.onclick = gerarRelatorio;
-}
+form.onsubmit = async (e) => {
+  e.preventDefault();
 
+  const data = {
+    data: form.data.value,
+    numeroCarga: form.numeroCarga.value,
+    transportadora: form.transportadora.value,
+    rota: form.rota.value,
+    volumes: Number(form.volumes.value || 0),
+    pedidos: Number(form.pedidos.value || 0),
+    carregador: form.carregador.value,
+    situacao: form.situacao.value,
+    observacoes: form.observacoes.value,
+    createdAt: serverTimestamp()
+  };
 
+  await addDoc(
+    collection(db, "users", currentUser.uid, "cargas"),
+    data
+  );
 
-  carregarCargas();
-}
+  form.reset();
+  await carregarCargas();
+};
 
 async function carregarCargas() {
-  if (!currentUser) return;
+  cargas = [];
 
-  listEl.innerHTML = `<p class="info-text">Carregando cargas...</p>`;
+  const q = query(
+    collection(db, "users", currentUser.uid, "cargas"),
+    orderBy("createdAt", "desc")
+  );
 
-  try {
-    const ref = collection(db, "users", currentUser.uid, "cargas");
-    const q = query(ref, orderBy("data", "desc"), orderBy("numeroCarga", "desc"));
-    const snap = await getDocs(q);
+  const snap = await getDocs(q);
 
-    cargas = snap.docs.map((d) => ({
-      id: d.id,
-      ...d.data()
-    }));
-
-    renderCargas();
-  } catch (err) {
-    console.error(err);
-    listEl.innerHTML = `<p class="error-text">Erro ao carregar cargas.</p>`;
-  }
-}
-
-function getCargasFiltradas() {
-  const dataFiltro = filtroDataEl.value;
-  const busca = filtroBuscaEl.value.trim().toLowerCase();
-
-  let filtradas = [...cargas];
-
-  if (dataFiltro) {
-    filtradas = filtradas.filter((c) => c.data === dataFiltro);
-  }
-
-  if (busca) {
-    filtradas = filtradas.filter((c) => {
-      const texto = [
-        c.numeroCarga,
-        c.transportadora,
-        c.rota,
-        c.carregador,
-        c.observacoes
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return texto.includes(busca);
+  snap.forEach(docSnap => {
+    cargas.push({
+      id: docSnap.id,
+      ...docSnap.data()
     });
-  }
+  });
 
-  return filtradas;
+  renderCargas();
 }
 
 function renderCargas() {
-  const filtradas = getCargasFiltradas();
+  listEl.innerHTML = "";
 
-  if (!filtradas.length) {
-    listEl.innerHTML = `<p class="empty-state">Nenhuma carga encontrada com os filtros atuais.</p>`;
-  } else {
-    listEl.innerHTML = filtradas
-      .map((c) => criarCardCarga(c))
-      .join("");
-  }
+  cargas.forEach(c => {
+    const el = document.createElement("div");
+    el.className = "carga-card";
+    el.innerHTML = `
+      <strong>${c.numeroCarga}</strong> — ${c.transportadora}<br>
+      Data: ${c.data} | Volumes: ${c.volumes} | Pedidos: ${c.pedidos}
+      <button data-id="${c.id}" class="btn-delete">Excluir</button>
+    `;
+    listEl.appendChild(el);
+  });
 
-  atualizarResumo(filtradas);
+  atualizarResumo();
 }
 
-function criarCardCarga(c) {
-  const dataFormatada = formatarData(c.data);
-  const situacao = c.situacao || "ok";
-  const chipClass = situacao === "ok" ? "chip--ok" : "chip--problema";
-  const chipLabel = situacao === "ok" ? "OK" : "Problema";
+listEl.onclick = async (e) => {
+  if (!e.target.classList.contains("btn-delete")) return;
 
-  const volumes = c.volumes || "-";
-  const pedidos = c.pedidos || "-";
-  const rota = c.rota || "-";
-  const observacoes = c.observacoes || "-";
-
-  return `
-    <article class="carga-card" data-id="${c.id}">
-      <header class="carga-header">
-        <div>
-          <span class="carga-numero">Carga ${escapeHtml(c.numeroCarga || "")}</span>
-          <span class="carga-data">${dataFormatada}</span>
-        </div>
-        <span class="chip ${chipClass}">${chipLabel}</span>
-      </header>
-      <div class="carga-body">
-        <p><strong>Transportadora:</strong> ${escapeHtml(c.transportadora || "-")}</p>
-        <p><strong>Rota:</strong> ${escapeHtml(rota)}</p>
-        <p><strong>Volumes:</strong> ${escapeHtml(String(volumes))} &nbsp; • &nbsp; <strong>Pedidos:</strong> ${escapeHtml(String(pedidos))}</p>
-        <p><strong>Carregador:</strong> ${escapeHtml(c.carregador || "-")}</p>
-        <p><strong>Obs:</strong> ${escapeHtml(observacoes)}</p>
-      </div>
-      <footer class="carga-footer">
-        <button class="btn-ghost btn-sm btn-edit" data-id="${c.id}">Editar</button>
-        <button class="btn-danger-outline btn-sm btn-delete" data-id="${c.id}">Excluir</button>
-      </footer>
-    </article>
-  `;
-}
-
-function atualizarResumo(lista) {
-  const totalCargas = lista.length;
-  const totalVolumes = lista.reduce(
-    (acc, c) => acc + (Number(c.volumes) || 0),
-    0
-  );
-  const totalPedidos = lista.reduce(
-    (acc, c) => acc + (Number(c.pedidos) || 0),
-    0
+  const id = e.target.dataset.id;
+  await deleteDoc(
+    doc(db, "users", currentUser.uid, "cargas", id)
   );
 
-  totalCargasEl.textContent = totalCargas;
-  totalVolumesEl.textContent = totalVolumes;
-  totalPedidosEl.textContent = totalPedidos;
+  await carregarCargas();
+};
+
+function atualizarResumo() {
+  document.getElementById("total-cargas").textContent = cargas.length;
+  document.getElementById("total-volumes").textContent =
+    cargas.reduce((s, c) => s + c.volumes, 0);
+  document.getElementById("total-pedidos").textContent =
+    cargas.reduce((s, c) => s + c.pedidos, 0);
 }
 
-async function handleSubmit(e) {
-  e.preventDefault();
-  if (!currentUser) return;
-
-  const numeroCarga = form.numeroCarga.value.trim();
-  const data = form.data.value;
-  const transportadora = form.transportadora.value.trim();
-  const rota = form.rota.value.trim();
-  const volumes = form.volumes.value.trim();
-  const pedidos = form.pedidos.value.trim();
-  const carregador = form.carregador.value.trim();
-  const situacao = form.situacao.value;
-  const observacoes = form.observacoes.value.trim();
-
-  if (!numeroCarga || !data || !transportadora) {
-    alert("Preencha pelo menos: Data, Nº da carga e Transportadora.");
-    return;
-  }
-
-  const payload = {
-    numeroCarga,
-    data,
-    transportadora,
-    rota,
-    volumes,
-    pedidos,
-    carregador,
-    situacao,
-    observacoes,
-    atualizadoEm: serverTimestamp()
-  };
-
-  try {
-    if (cargaEmEdicaoId) {
-      const ref = doc(db, "users", currentUser.uid, "cargas", cargaEmEdicaoId);
-      await updateDoc(ref, payload);
-    } else {
-      const ref = collection(db, "users", currentUser.uid, "cargas");
-      await addDoc(ref, {
-        ...payload,
-        criadoEm: serverTimestamp()
-      });
-    }
-
-    form.reset();
-    form.data.value = new Date().toISOString().slice(0, 10);
-    cargaEmEdicaoId = null;
-    form.querySelector("button[type='submit']").textContent = "Salvar carga";
-
-    await carregarCargas();
-  } catch (err) {
-    console.error(err);
-    alert("Erro ao salvar a carga.");
-  }
-}
-
-function handleListClick(e) {
-  const editBtn = e.target.closest(".btn-edit");
-  const deleteBtn = e.target.closest(".btn-delete");
-
-  if (editBtn) {
-    const id = editBtn.dataset.id;
-    const carga = cargas.find((c) => c.id === id);
-    if (carga) preencherFormularioEdicao(carga);
-  }
-
-  if (deleteBtn) {
-    const id = deleteBtn.dataset.id;
-    const carga = cargas.find((c) => c.id === id);
-    if (!carga) return;
-
-    const confirmar = confirm(
-      `Excluir a carga ${carga.numeroCarga} do dia ${formatarData(carga.data)}?`
-    );
-
-    if (confirmar) {
-      excluirCarga(id);
-    }
-  }
-}
-
-function preencherFormularioEdicao(carga) {
-  cargaEmEdicaoId = carga.id;
-
-  form.numeroCarga.value = carga.numeroCarga || "";
-  form.data.value = carga.data || "";
-  form.transportadora.value = carga.transportadora || "";
-  form.rota.value = carga.rota || "";
-  form.volumes.value = carga.volumes || "";
-  form.pedidos.value = carga.pedidos || "";
-  form.carregador.value = carga.carregador || "";
-  form.situacao.value = carga.situacao || "ok";
-  form.observacoes.value = carga.observacoes || "";
-
-  form.querySelector("button[type='submit']").textContent = "Atualizar carga";
-  form.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-async function excluirCarga(id) {
-  if (!currentUser) return;
-  try {
-    const ref = doc(db, "users", currentUser.uid, "cargas", id);
-    await deleteDoc(ref);
-    await carregarCargas();
-  } catch (err) {
-    console.error(err);
-    alert("Erro ao excluir a carga.");
-  }
-}
-
-function exportarPDF() {
-  const filtradas = getCargasFiltradas();
-
-  if (!filtradas.length) {
-    alert("Não há cargas para exportar com os filtros atuais.");
-    return;
-  }
-
-  const win = window.open("", "_blank");
-  if (!win) {
-    alert("Pop-up bloqueado. Libere pop-ups para exportar.");
-    return;
-  }
-
-  const linhas = filtradas
-    .map((c) => {
-      return `
-        <tr>
-          <td>${escapeHtml(formatarData(c.data))}</td>
-          <td>${escapeHtml(c.numeroCarga || "")}</td>
-          <td>${escapeHtml(c.transportadora || "")}</td>
-          <td>${escapeHtml(c.rota || "")}</td>
-          <td>${escapeHtml(String(c.volumes || "-"))}</td>
-          <td>${escapeHtml(String(c.pedidos || "-"))}</td>
-          <td>${escapeHtml(c.carregador || "")}</td>
-          <td>${c.situacao === "ok" ? "OK" : "Problema"}</td>
-          <td>${escapeHtml(c.observacoes || "")}</td>
-        </tr>
-      `;
-    })
-    .join("");
-
-  const html = `
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>Relatório de Cargas</title>
-        <style>
-          body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            padding: 24px;
-            color: #111827;
-          }
-          h1 { margin-bottom: 4px; }
-          h2 { margin-top: 0; font-size: 14px; color: #6b7280; }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 16px;
-            font-size: 12px;
-          }
-          th, td {
-            border: 1px solid #e5e7eb;
-            padding: 4px 6px;
-            vertical-align: top;
-          }
-          th {
-            background: #f3f4f6;
-            text-align: left;
-          }
-        </style>
-      </head>
-      <body>
-        <h1>Relatório de Cargas</h1>
-        <h2>Gerado em ${new Date().toLocaleString("pt-BR")}</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Nº Carga</th>
-              <th>Transportadora</th>
-              <th>Rota</th>
-              <th>Volumes</th>
-              <th>Pedidos</th>
-              <th>Carregador</th>
-              <th>Situação</th>
-              <th>Observações</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${linhas}
-          </tbody>
-        </table>
-        <script>
-          window.print();
-        </script>
-      </body>
-    </html>
-  `;
-
-  win.document.write(html);
-  win.document.close();
-}
-
-function formatarData(iso) {
-  if (!iso) return "-";
-  const [ano, mes, dia] = iso.split("-");
-  if (!ano || !mes || !dia) return iso;
-  return `${dia}/${mes}/${ano}`;
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-// NAVEGAÇÃO ENTRE TELAS CODIGO ATUALIZADO HOJE
-const screens = document.querySelectorAll(".screen");
-
-document.querySelectorAll(".nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-
-    // botão ativo
-    document.querySelectorAll(".nav-btn").forEach(b =>
-      b.classList.remove("nav-active")
-    );
-    btn.classList.add("nav-active");
-
-    // telas
-    const target = btn.dataset.screen;
-
-    screens.forEach(screen => {
-      screen.classList.remove("screen-active");
-    });
-
-    const targetScreen = document.getElementById(`screen-${target}`);
-
-    if (targetScreen) {
-      targetScreen.classList.add("screen-active");
-    } else {
-      alert(`Tela "${target}" ainda será adicionada 👨‍💻`);
-    }
-  });
-});
-
-
-// MENU MOBILE
-const mobileMenuBtn = document.getElementById("mobile-menu-btn");
-const appNav = document.getElementById("app-nav");
-
-if (mobileMenuBtn) {
-  mobileMenuBtn.addEventListener("click", () => {
-    appNav.classList.toggle("open");
-  });
-}
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js")
-    .then(() => console.log("Service Worker registrado"))
-    .catch(err => console.error("Erro no SW:", err));
-}
-
-window.addEventListener("load", () => {
-  const splash = document.getElementById("splash-screen");
-
-  // Só mostrar splash em modo app (PWA)
-  const isPWA =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true;
-
-  if (splash && isPWA) {
-    setTimeout(() => {
-      splash.classList.add("hide");
-    }, 900);
-  } else if (splash) {
-    splash.remove(); // desktop / navegador normal
-  }
-});
-
+// ==========================
+// RELATÓRIOS
+// ==========================
 function gerarRelatorio() {
-  let inicio = document.getElementById("relatorio-inicio").value;
-  let fim = document.getElementById("relatorio-fim").value;
+  const inicio = document.getElementById("relatorio-inicio").value;
+  const fim = document.getElementById("relatorio-fim").value;
 
   let filtradas = [...cargas];
 
-  if (inicio) {
-    filtradas = filtradas.filter(c => c.data >= inicio);
-  }
-
-  if (fim) {
-    filtradas = filtradas.filter(c => c.data <= fim);
-  }
+  if (inicio) filtradas = filtradas.filter(c => c.data >= inicio);
+  if (fim) filtradas = filtradas.filter(c => c.data <= fim);
 
   atualizarResumoRelatorio(filtradas);
+  atualizarKPIsRelatorio(filtradas);
   gerarGraficoCargasPorDia(filtradas);
   gerarGraficoVolumesPedidos(filtradas);
-  atualizarKPIsRelatorio(filtradas);
-
 }
+
+document.getElementById("btn-gerar-relatorio").onclick = gerarRelatorio;
 
 function atualizarResumoRelatorio(lista) {
   document.getElementById("rel-total-cargas").textContent = lista.length;
-
   document.getElementById("rel-total-volumes").textContent =
-    lista.reduce((s, c) => s + (Number(c.volumes) || 0), 0);
-
+    lista.reduce((s, c) => s + c.volumes, 0);
   document.getElementById("rel-total-pedidos").textContent =
-    lista.reduce((s, c) => s + (Number(c.pedidos) || 0), 0);
+    lista.reduce((s, c) => s + c.pedidos, 0);
 }
 
+// ==========================
+// KPIs + RANKING
+// ==========================
+function atualizarKPIsRelatorio(lista) {
+  const total = lista.length;
+  const volumes = lista.reduce((s, c) => s + c.volumes, 0);
+  const media = total ? (volumes / total).toFixed(1) : 0;
+  const problemas = lista.filter(c => c.situacao === "problema").length;
+
+  const mapa = {};
+  lista.forEach(c => {
+    mapa[c.transportadora] =
+      (mapa[c.transportadora] || 0) + 1;
+  });
+
+  const ranking = Object.entries(mapa)
+    .sort((a, b) => b[1] - a[1]);
+
+  document.getElementById("kpi-total-cargas").textContent = total;
+  document.getElementById("kpi-media-volumes").textContent = media;
+  document.getElementById("kpi-problemas").textContent = problemas;
+  document.getElementById("kpi-top-transportadora").textContent =
+    ranking[0]?.[0] || "-";
+
+  renderRankingTransportadoras(ranking);
+}
+
+function renderRankingTransportadoras(ranking) {
+  const el = document.getElementById("ranking-transportadoras");
+  el.innerHTML = "";
+
+  ranking.forEach(([nome, total], i) => {
+    el.innerHTML += `
+      <div class="ranking-item">
+        <span class="ranking-pos">${i + 1}º</span>
+        <span class="ranking-name">${nome}</span>
+        <span class="ranking-value">${total}</span>
+      </div>
+    `;
+  });
+}
+
+// ==========================
+// GRÁFICOS
+// ==========================
 function gerarGraficoCargasPorDia(lista) {
   const ctx = document.getElementById("grafico-cargas-dia");
-  if (!ctx) return;
 
   const mapa = {};
   lista.forEach(c => {
     mapa[c.data] = (mapa[c.data] || 0) + 1;
   });
 
-  const labels = Object.keys(mapa).sort();
-  const valores = labels.map(l => mapa[l]);
-
   if (chartCargasDia) chartCargasDia.destroy();
 
   chartCargasDia = new Chart(ctx, {
-    type: "bar",
+    type: "line",
     data: {
-      labels,
+      labels: Object.keys(mapa),
       datasets: [{
         label: "Cargas",
-        data: valores
+        data: Object.values(mapa)
       }]
     }
   });
@@ -541,10 +266,6 @@ function gerarGraficoCargasPorDia(lista) {
 
 function gerarGraficoVolumesPedidos(lista) {
   const ctx = document.getElementById("grafico-volumes-pedidos");
-  if (!ctx) return;
-
-  const totalVolumes = lista.reduce((s, c) => s + (Number(c.volumes) || 0), 0);
-  const totalPedidos = lista.reduce((s, c) => s + (Number(c.pedidos) || 0), 0);
 
   if (chartVolumesPedidos) chartVolumesPedidos.destroy();
 
@@ -553,121 +274,58 @@ function gerarGraficoVolumesPedidos(lista) {
     data: {
       labels: ["Volumes", "Pedidos"],
       datasets: [{
-        data: [totalVolumes, totalPedidos]
+        data: [
+          lista.reduce((s, c) => s + c.volumes, 0),
+          lista.reduce((s, c) => s + c.pedidos, 0)
+        ]
       }]
     }
   });
 }
 
-function atualizarKPIsRelatorio(lista) {
-  const total = lista.length;
+// ==========================
+// CONFIGURAÇÕES (FIRESTORE)
+// ==========================
+async function carregarConfiguracoes() {
+  if (!currentUser) return;
 
-  const totalVolumes = lista.reduce(
-    (s, c) => s + (Number(c.volumes) || 0),
-    0
-  );
+  const ref = doc(db, "users", currentUser.uid, "config", "system");
+  const snap = await getDoc(ref);
 
-  const mediaVolumes = total ? (totalVolumes / total).toFixed(1) : 0;
+  if (snap.exists()) {
+    const data = snap.data();
+    document.getElementById("config-empresa").value = data.empresa || "";
+    document.getElementById("config-cidade").value = data.cidade || "";
+    document.getElementById("config-auto-relatorio").checked =
+      data.autoRelatorio === true;
+  }
 
-  const problemas = lista.filter(c => c.situacao === "problema").length;
+  document.getElementById("config-usuario").textContent =
+    currentUser.displayName || "Usuário";
+  document.getElementById("config-email").textContent =
+    currentUser.email || "-";
+}
 
-  // ranking transportadoras
-  const mapa = {};
-  lista.forEach(c => {
-    if (!c.transportadora) return;
-    mapa[c.transportadora] = (mapa[c.transportadora] || 0) + 1;
+document.getElementById("btn-salvar-config").onclick = async () => {
+  const ref = doc(db, "users", currentUser.uid, "config", "system");
+
+  await setDoc(ref, {
+    empresa: document.getElementById("config-empresa").value,
+    cidade: document.getElementById("config-cidade").value,
+    autoRelatorio: document.getElementById("config-auto-relatorio").checked,
+    updatedAt: serverTimestamp()
   });
 
-  const ranking = Object.entries(mapa)
-    .sort((a, b) => b[1] - a[1]);
+  alert("Configurações salvas com sucesso ✔");
+};
 
-  document.getElementById("kpi-total-cargas").textContent = total;
-  document.getElementById("kpi-media-volumes").textContent = mediaVolumes;
-  document.getElementById("kpi-problemas").textContent = problemas;
-  document.getElementById("kpi-top-transportadora").textContent =
-    ranking.length ? ranking[0][0] : "-";
-
-  renderRankingTransportadoras(ranking);
-}
-
-function renderRankingTransportadoras(ranking) {
-  const container = document.getElementById("ranking-transportadoras");
-  if (!container) return;
-
-  if (!ranking.length) {
-    container.innerHTML = `<p class="empty-state">Sem dados no período.</p>`;
-    return;
+document.getElementById("btn-limpar-dados").onclick = () => {
+  if (confirm("Deseja limpar os dados locais?")) {
+    location.reload();
   }
+};
 
-  container.innerHTML = ranking
-    .map(([nome, total], index) => `
-      <div class="ranking-item">
-        <span class="ranking-pos">${index + 1}º</span>
-        <span class="ranking-name">${nome}</span>
-        <span class="ranking-value">${total}</span>
-      </div>
-    `)
-    .join("");
-}
-
-function carregarConfiguracoes() {
-  const empresa = localStorage.getItem("config_empresa") || "";
-  const cidade = localStorage.getItem("config_cidade") || "";
-  const autoRel = localStorage.getItem("config_auto_relatorio") === "true";
-
-  const elEmpresa = document.getElementById("config-empresa");
-  const elCidade = document.getElementById("config-cidade");
-  const elAuto = document.getElementById("config-auto-relatorio");
-
-  if (elEmpresa) elEmpresa.value = empresa;
-  if (elCidade) elCidade.value = cidade;
-  if (elAuto) elAuto.checked = autoRel;
-
-  if (window.usuarioAtual) {
-    document.getElementById("config-usuario").textContent =
-      usuarioAtual.displayName || "Usuário";
-    document.getElementById("config-email").textContent =
-      usuarioAtual.email || "-";
-  }
-}
-
-const btnSalvarConfig = document.getElementById("btn-salvar-config");
-if (btnSalvarConfig) {
-  btnSalvarConfig.onclick = () => {
-    localStorage.setItem(
-      "config_empresa",
-      document.getElementById("config-empresa").value
-    );
-    localStorage.setItem(
-      "config_cidade",
-      document.getElementById("config-cidade").value
-    );
-    localStorage.setItem(
-      "config_auto_relatorio",
-      document.getElementById("config-auto-relatorio").checked
-    );
-
-    alert("Configurações salvas com sucesso!");
-  };
-}
-
-const btnLimparDados = document.getElementById("btn-limpar-dados");
-if (btnLimparDados) {
-  btnLimparDados.onclick = () => {
-    if (confirm("Deseja limpar os dados locais do sistema?")) {
-      localStorage.clear();
-      location.reload();
-    }
-  };
-}
-
-const btnLogoutConfig = document.getElementById("btn-logout-config");
-if (btnLogoutConfig) {
-  btnLogoutConfig.onclick = () => {
-    logout();
-  };
-}
-
-if (target === "config") {
-  carregarConfiguracoes();
-}
+document.getElementById("btn-logout-config").onclick = async () => {
+  await signOut(auth);
+  window.location.href = "login.html";
+};
