@@ -1,3 +1,5 @@
+// app.js
+
 let chartCargasDia = null;
 let chartVolumesPedidos = null;
 
@@ -35,9 +37,7 @@ const btnLimparFiltros = document.getElementById("btn-limpar-filtros");
 const btnLogout = document.getElementById("logout-header");
 const usuarioNomeEl = document.getElementById("usuario-nome");
 
-// ===============================
-// AUTH
-// ===============================
+// Protege a rota e carrega dados do usuário
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "login.html";
@@ -50,9 +50,6 @@ onAuthStateChanged(auth, async (user) => {
   init();
 });
 
-// ===============================
-// INIT
-// ===============================
 function init() {
   const hoje = new Date().toISOString().slice(0, 10);
   if (form && form.data) {
@@ -76,7 +73,7 @@ function init() {
 
   listEl.addEventListener("click", handleListClick);
 
-  // botão gerar relatório
+  // BOTÃO GERAR RELATÓRIO
   const btnGerarRelatorio = document.getElementById("btn-gerar-relatorio");
   if (btnGerarRelatorio) {
     btnGerarRelatorio.onclick = gerarRelatorio;
@@ -85,9 +82,6 @@ function init() {
   carregarCargas();
 }
 
-// ===============================
-// CARGAS
-// ===============================
 async function carregarCargas() {
   if (!currentUser) return;
 
@@ -190,42 +184,63 @@ function criarCardCarga(c) {
 }
 
 function atualizarResumo(lista) {
-  totalCargasEl.textContent = lista.length;
-  totalVolumesEl.textContent = lista.reduce((acc, c) => acc + (Number(c.volumes) || 0), 0);
-  totalPedidosEl.textContent = lista.reduce((acc, c) => acc + (Number(c.pedidos) || 0), 0);
+  const totalCargas = lista.length;
+  const totalVolumes = lista.reduce(
+    (acc, c) => acc + (Number(c.volumes) || 0),
+    0
+  );
+  const totalPedidos = lista.reduce(
+    (acc, c) => acc + (Number(c.pedidos) || 0),
+    0
+  );
+
+  totalCargasEl.textContent = totalCargas;
+  totalVolumesEl.textContent = totalVolumes;
+  totalPedidosEl.textContent = totalPedidos;
 }
 
-// ===============================
-// SUBMIT / EDIT / DELETE
-// ===============================
 async function handleSubmit(e) {
   e.preventDefault();
   if (!currentUser) return;
 
+  const numeroCarga = form.numeroCarga.value.trim();
+  const data = form.data.value;
+  const transportadora = form.transportadora.value.trim();
+  const rota = form.rota.value.trim();
+  const volumes = form.volumes.value.trim();
+  const pedidos = form.pedidos.value.trim();
+  const carregador = form.carregador.value.trim();
+  const situacao = form.situacao.value;
+  const observacoes = form.observacoes.value.trim();
+
+  if (!numeroCarga || !data || !transportadora) {
+    alert("Preencha pelo menos: Data, Nº da carga e Transportadora.");
+    return;
+  }
+
   const payload = {
-    numeroCarga: form.numeroCarga.value.trim(),
-    data: form.data.value,
-    transportadora: form.transportadora.value.trim(),
-    rota: form.rota.value.trim(),
-    volumes: form.volumes.value.trim(),
-    pedidos: form.pedidos.value.trim(),
-    carregador: form.carregador.value.trim(),
-    situacao: form.situacao.value,
-    observacoes: form.observacoes.value.trim(),
+    numeroCarga,
+    data,
+    transportadora,
+    rota,
+    volumes,
+    pedidos,
+    carregador,
+    situacao,
+    observacoes,
     atualizadoEm: serverTimestamp()
   };
 
   try {
     if (cargaEmEdicaoId) {
-      await updateDoc(
-        doc(db, "users", currentUser.uid, "cargas", cargaEmEdicaoId),
-        payload
-      );
+      const ref = doc(db, "users", currentUser.uid, "cargas", cargaEmEdicaoId);
+      await updateDoc(ref, payload);
     } else {
-      await addDoc(
-        collection(db, "users", currentUser.uid, "cargas"),
-        { ...payload, criadoEm: serverTimestamp() }
-      );
+      const ref = collection(db, "users", currentUser.uid, "cargas");
+      await addDoc(ref, {
+        ...payload,
+        criadoEm: serverTimestamp()
+      });
     }
 
     form.reset();
@@ -245,16 +260,22 @@ function handleListClick(e) {
   const deleteBtn = e.target.closest(".btn-delete");
 
   if (editBtn) {
-    const carga = cargas.find(c => c.id === editBtn.dataset.id);
+    const id = editBtn.dataset.id;
+    const carga = cargas.find((c) => c.id === id);
     if (carga) preencherFormularioEdicao(carga);
   }
 
   if (deleteBtn) {
-    const carga = cargas.find(c => c.id === deleteBtn.dataset.id);
+    const id = deleteBtn.dataset.id;
+    const carga = cargas.find((c) => c.id === id);
     if (!carga) return;
 
-    if (confirm(`Excluir a carga ${carga.numeroCarga} do dia ${formatarData(carga.data)}?`)) {
-      excluirCarga(carga.id);
+    const confirmar = confirm(
+      `Excluir a carga ${carga.numeroCarga} do dia ${formatarData(carga.data)}?`
+    );
+
+    if (confirmar) {
+      excluirCarga(id);
     }
   }
 }
@@ -262,120 +283,207 @@ function handleListClick(e) {
 function preencherFormularioEdicao(carga) {
   cargaEmEdicaoId = carga.id;
 
-  Object.keys(carga).forEach(k => {
-    if (form[k]) form[k].value = carga[k] || "";
-  });
+  form.numeroCarga.value = carga.numeroCarga || "";
+  form.data.value = carga.data || "";
+  form.transportadora.value = carga.transportadora || "";
+  form.rota.value = carga.rota || "";
+  form.volumes.value = carga.volumes || "";
+  form.pedidos.value = carga.pedidos || "";
+  form.carregador.value = carga.carregador || "";
+  form.situacao.value = carga.situacao || "ok";
+  form.observacoes.value = carga.observacoes || "";
 
   form.querySelector("button[type='submit']").textContent = "Atualizar carga";
-  form.scrollIntoView({ behavior: "smooth" });
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function excluirCarga(id) {
-  await deleteDoc(doc(db, "users", currentUser.uid, "cargas", id));
-  await carregarCargas();
+  if (!currentUser) return;
+  try {
+    const ref = doc(db, "users", currentUser.uid, "cargas", id);
+    await deleteDoc(ref);
+    await carregarCargas();
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao excluir a carga.");
+  }
 }
 
-// ===============================
-// RELATÓRIOS / KPIs / GRÁFICOS
-// ===============================
-function gerarRelatorio() {
-  let inicio = document.getElementById("relatorio-inicio").value;
-  let fim = document.getElementById("relatorio-fim").value;
+function exportarPDF() {
+  const filtradas = getCargasFiltradas();
 
-  let filtradas = [...cargas];
+  if (!filtradas.length) {
+    alert("Não há cargas para exportar com os filtros atuais.");
+    return;
+  }
 
-  if (inicio) filtradas = filtradas.filter(c => c.data >= inicio);
-  if (fim) filtradas = filtradas.filter(c => c.data <= fim);
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("Pop-up bloqueado. Libere pop-ups para exportar.");
+    return;
+  }
 
-  atualizarResumoRelatorio(filtradas);
-  gerarGraficoCargasPorDia(filtradas);
-  gerarGraficoVolumesPedidos(filtradas);
-  atualizarKPIsRelatorio(filtradas);
+  const linhas = filtradas
+    .map((c) => {
+      return `
+        <tr>
+          <td>${escapeHtml(formatarData(c.data))}</td>
+          <td>${escapeHtml(c.numeroCarga || "")}</td>
+          <td>${escapeHtml(c.transportadora || "")}</td>
+          <td>${escapeHtml(c.rota || "")}</td>
+          <td>${escapeHtml(String(c.volumes || "-"))}</td>
+          <td>${escapeHtml(String(c.pedidos || "-"))}</td>
+          <td>${escapeHtml(c.carregador || "")}</td>
+          <td>${c.situacao === "ok" ? "OK" : "Problema"}</td>
+          <td>${escapeHtml(c.observacoes || "")}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const html = `
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Relatório de Cargas</title>
+        <style>
+          body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            padding: 24px;
+            color: #111827;
+          }
+          h1 { margin-bottom: 4px; }
+          h2 { margin-top: 0; font-size: 14px; color: #6b7280; }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 12px;
+          }
+          th, td {
+            border: 1px solid #e5e7eb;
+            padding: 4px 6px;
+            vertical-align: top;
+          }
+          th {
+            background: #f3f4f6;
+            text-align: left;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Relatório de Cargas</h1>
+        <h2>Gerado em ${new Date().toLocaleString("pt-BR")}</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Nº Carga</th>
+              <th>Transportadora</th>
+              <th>Rota</th>
+              <th>Volumes</th>
+              <th>Pedidos</th>
+              <th>Carregador</th>
+              <th>Situação</th>
+              <th>Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${linhas}
+          </tbody>
+        </table>
+        <script>
+          window.print();
+        </script>
+      </body>
+    </html>
+  `;
+
+  win.document.write(html);
+  win.document.close();
 }
 
-function atualizarResumoRelatorio(lista) {
-  document.getElementById("rel-total-cargas").textContent = lista.length;
-  document.getElementById("rel-total-volumes").textContent =
-    lista.reduce((s, c) => s + (Number(c.volumes) || 0), 0);
-  document.getElementById("rel-total-pedidos").textContent =
-    lista.reduce((s, c) => s + (Number(c.pedidos) || 0), 0);
+function formatarData(iso) {
+  if (!iso) return "-";
+  const [ano, mes, dia] = iso.split("-");
+  if (!ano || !mes || !dia) return iso;
+  return `${dia}/${mes}/${ano}`;
 }
 
-function gerarGraficoCargasPorDia(lista) {
-  const ctx = document.getElementById("grafico-cargas-dia");
-  if (!ctx) return;
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
-  const mapa = {};
-  lista.forEach(c => mapa[c.data] = (mapa[c.data] || 0) + 1);
+// NAVEGAÇÃO ENTRE TELAS (CHAMADA DE CONFIG NO LUGAR CERTO)
+const screens = document.querySelectorAll(".screen");
 
-  if (chartCargasDia) chartCargasDia.destroy();
+document.querySelectorAll(".nav-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
 
-  chartCargasDia = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: Object.keys(mapa).sort(),
-      datasets: [{ label: "Cargas", data: Object.values(mapa) }]
+    document.querySelectorAll(".nav-btn").forEach(b =>
+      b.classList.remove("nav-active")
+    );
+    btn.classList.add("nav-active");
+
+    const target = btn.dataset.screen;
+
+    screens.forEach(screen => {
+      screen.classList.remove("screen-active");
+    });
+
+    const targetScreen = document.getElementById(`screen-${target}`);
+
+    if (targetScreen) {
+      targetScreen.classList.add("screen-active");
+      if (target === "config") {
+        carregarConfiguracoes();
+      }
+    } else {
+      alert(`Tela "${target}" ainda será adicionada 👨‍💻`);
     }
+  });
+});
+
+// MENU MOBILE
+const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+const appNav = document.getElementById("app-nav");
+
+if (mobileMenuBtn) {
+  mobileMenuBtn.addEventListener("click", () => {
+    appNav.classList.toggle("open");
   });
 }
 
-function gerarGraficoVolumesPedidos(lista) {
-  const ctx = document.getElementById("grafico-volumes-pedidos");
-  if (!ctx) return;
-
-  if (chartVolumesPedidos) chartVolumesPedidos.destroy();
-
-  chartVolumesPedidos = new Chart(ctx, {
-    type: "doughnut",
-    data: {
-      labels: ["Volumes", "Pedidos"],
-      datasets: [{
-        data: [
-          lista.reduce((s, c) => s + (Number(c.volumes) || 0), 0),
-          lista.reduce((s, c) => s + (Number(c.pedidos) || 0), 0)
-        ]
-      }]
-    }
-  });
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js")
+    .then(() => console.log("Service Worker registrado"))
+    .catch(err => console.error("Erro no SW:", err));
 }
 
-function atualizarKPIsRelatorio(lista) {
-  const total = lista.length;
-  const totalVolumes = lista.reduce((s, c) => s + (Number(c.volumes) || 0), 0);
-  const media = total ? (totalVolumes / total).toFixed(1) : 0;
-  const problemas = lista.filter(c => c.situacao === "problema").length;
+window.addEventListener("load", () => {
+  const splash = document.getElementById("splash-screen");
 
-  const mapa = {};
-  lista.forEach(c => mapa[c.transportadora] = (mapa[c.transportadora] || 0) + 1);
+  const isPWA =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
 
-  const ranking = Object.entries(mapa).sort((a, b) => b[1] - a[1]);
+  if (splash && isPWA) {
+    setTimeout(() => {
+      splash.classList.add("hide");
+    }, 900);
+  } else if (splash) {
+    splash.remove();
+  }
+});
 
-  document.getElementById("kpi-total-cargas").textContent = total;
-  document.getElementById("kpi-media-volumes").textContent = media;
-  document.getElementById("kpi-problemas").textContent = problemas;
-  document.getElementById("kpi-top-transportadora").textContent =
-    ranking.length ? ranking[0][0] : "-";
-
-  renderRankingTransportadoras(ranking);
-}
-
-function renderRankingTransportadoras(ranking) {
-  const container = document.getElementById("ranking-transportadoras");
-  if (!container) return;
-
-  container.innerHTML = ranking.length
-    ? ranking.map(([nome, total], i) => `
-        <div class="ranking-item">
-          <span class="ranking-pos">${i + 1}º</span>
-          <span class="ranking-name">${nome}</span>
-          <span class="ranking-value">${total}</span>
-        </div>`).join("")
-    : `<p class="empty-state">Sem dados no período.</p>`;
-}
-
-// ===============================
-// CONFIGURAÇÕES — FIRESTORE
-// ===============================
+// ======================
+// CONFIGURAÇÕES — FIRESTORE (NOVO)
+// ======================
 async function carregarConfiguracoes() {
   if (!currentUser) return;
 
@@ -386,7 +494,8 @@ async function carregarConfiguracoes() {
     const data = snap.data();
     document.getElementById("config-empresa").value = data.empresa || "";
     document.getElementById("config-cidade").value = data.cidade || "";
-    document.getElementById("config-auto-relatorio").checked = data.autoRelatorio === true;
+    document.getElementById("config-auto-relatorio").checked =
+      data.autoRelatorio === true;
   }
 
   document.getElementById("config-usuario").textContent =
@@ -408,6 +517,7 @@ if (btnSalvarConfig) {
       },
       { merge: true }
     );
+
     alert("Configurações salvas com sucesso!");
   };
 }
@@ -423,74 +533,7 @@ if (btnLimparDados) {
 
 const btnLogoutConfig = document.getElementById("btn-logout-config");
 if (btnLogoutConfig) {
-  btnLogoutConfig.onclick = () => logout();
-}
-
-// ===============================
-// NAVEGAÇÃO ENTRE TELAS
-// ===============================
-const screens = document.querySelectorAll(".screen");
-document.querySelectorAll(".nav-btn").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("nav-active"));
-    btn.classList.add("nav-active");
-
-    const target = btn.dataset.screen;
-    screens.forEach(s => s.classList.remove("screen-active"));
-
-    const targetScreen = document.getElementById(`screen-${target}`);
-    if (targetScreen) {
-      targetScreen.classList.add("screen-active");
-      if (target === "config") await carregarConfiguracoes();
-    }
-  });
-});
-
-// ===============================
-// MENU MOBILE + PWA
-// ===============================
-const mobileMenuBtn = document.getElementById("mobile-menu-btn");
-const appNav = document.getElementById("app-nav");
-
-if (mobileMenuBtn) {
-  mobileMenuBtn.addEventListener("click", () => {
-    appNav.classList.toggle("open");
-  });
-}
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js")
-    .then(() => console.log("Service Worker registrado"))
-    .catch(err => console.error("Erro no SW:", err));
-}
-
-window.addEventListener("load", () => {
-  const splash = document.getElementById("splash-screen");
-  const isPWA =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true;
-
-  if (splash && isPWA) {
-    setTimeout(() => splash.classList.add("hide"), 900);
-  } else if (splash) {
-    splash.remove();
-  }
-});
-
-// ===============================
-// HELPERS
-// ===============================
-function formatarData(iso) {
-  if (!iso) return "-";
-  const [a, m, d] = iso.split("-");
-  return a && m && d ? `${d}/${m}/${a}` : iso;
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  btnLogoutConfig.onclick = () => {
+    logout();
+  };
 }
