@@ -625,7 +625,8 @@ textarea {
    RELATÓRIOS — AJUSTE PROFISSIONAL
 ============================== */
 
-#screen-relatorios {
+/* layout SOMENTE quando a tela estiver ativa */
+#screen-relatorios.screen-active {
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -654,15 +655,15 @@ textarea {
   font-weight: 600;
 }
 
-/* grid base */
-#screen-relatorios > .card .summary-grid {
+/* grid base (somente dentro dos cards de relatórios) */
+#screen-relatorios.screen-active > .card .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
 }
 
-/* ===== KPIs (somente o primeiro bloco após filtros) ===== */
-#screen-relatorios
+/* ===== KPIs (somente o PRIMEIRO bloco após filtros) ===== */
+#screen-relatorios.screen-active
   > .card:nth-of-type(2)
   .summary-item {
   background: linear-gradient(135deg, #1e40af, #2563eb);
@@ -672,14 +673,14 @@ textarea {
   box-shadow: 0 10px 20px rgba(30, 64, 175, 0.25);
 }
 
-#screen-relatorios
+#screen-relatorios.screen-active
   > .card:nth-of-type(2)
   .summary-label {
   font-size: 0.8rem;
   opacity: 0.85;
 }
 
-#screen-relatorios
+#screen-relatorios.screen-active
   > .card:nth-of-type(2)
   .summary-value {
   font-size: 1.8rem;
@@ -715,13 +716,13 @@ textarea {
 }
 
 /* gráficos */
-#screen-relatorios canvas {
+#screen-relatorios.screen-active canvas {
   margin-top: 10px;
 }
 
 /* responsivo */
 @media (max-width: 768px) {
-  #screen-relatorios
+  #screen-relatorios.screen-active
     > .card:nth-of-type(2)
     .summary-value {
     font-size: 1.5rem;
