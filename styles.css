@@ -620,3 +620,130 @@ textarea {
 .screen-active {
   display: block;
 }
+
+/* ==============================
+   RELATÓRIOS — VISUAL PROFISSIONAL
+============================== */
+
+/* espaçamento geral da tela */
+#screen-relatorios {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* títulos mais fortes */
+#screen-relatorios h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+#screen-relatorios h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* ==============================
+   FILTROS — estilo toolbar
+============================== */
+#screen-relatorios .filters-card {
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  border: 1px solid #e5e7eb;
+}
+
+#screen-relatorios .filters-grid {
+  align-items: end;
+}
+
+/* botão gerar relatório com mais destaque */
+#btn-gerar-relatorio {
+  height: 42px;
+  font-weight: 600;
+}
+
+/* ==============================
+   KPIs — destaque visual
+============================== */
+#screen-relatorios .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+#screen-relatorios .summary-item {
+  background: linear-gradient(135deg, #1e40af, #2563eb);
+  color: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 20px rgba(30, 64, 175, 0.25);
+}
+
+#screen-relatorios .summary-item .summary-label {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+#screen-relatorios .summary-item .summary-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-top: 4px;
+  display: block;
+}
+
+/* ==============================
+   RANKING — estilo lista premium
+============================== */
+#ranking-transportadoras {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#ranking-transportadoras .ranking-item {
+  display: grid;
+  grid-template-columns: 36px 1fr 50px;
+  align-items: center;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--stroke);
+}
+
+#ranking-transportadoras .ranking-pos {
+  font-weight: 700;
+  color: #2563eb;
+}
+
+#ranking-transportadoras .ranking-name {
+  font-weight: 500;
+}
+
+#ranking-transportadoras .ranking-value {
+  text-align: right;
+  font-weight: 600;
+}
+
+/* ==============================
+   GRÁFICOS — mais respiro
+============================== */
+#screen-relatorios canvas {
+  margin-top: 10px;
+}
+
+#screen-relatorios .card {
+  border-radius: 14px;
+}
+
+/* ==============================
+   RESPONSIVO
+============================== */
+@media (max-width: 768px) {
+  #screen-relatorios .summary-item {
+    padding: 14px;
+  }
+
+  #screen-relatorios .summary-item .summary-value {
+    font-size: 1.5rem;
+  }
+}
