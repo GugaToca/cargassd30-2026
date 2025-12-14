@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Diário de Cargas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e40af">
+</head>
+
+<body class="app-page">
+
+  <!-- SPLASH SCREEN -->
+  <div id="splash-screen">
+    <img src="imagem_logistica.png" alt="Logo" />
+  </div>
+
+  <div class="app-shell">
+
+    <!-- HEADER -->
+    <header class="app-header">
+
+      <div class="app-header__left">
+        <img src="imagem_logistica.png" alt="Logo" class="header-logo">
+      </div>
+
+      <div class="app-header__right">
+        <div class="user-pill">
+          <span class="user-avatar">👤</span>
+          <span id="usuario-nome" class="user-name">Carregando...</span>
+        </div>
+        <button id="logout-header" class="btn-ghost btn-sm">Sair</button>
+        <button id="mobile-menu-btn" class="mobile-menu-btn">☰</button>
+      </div>
+
+      <!-- MENU -->
+      <nav class="app-nav" id="app-nav">
+        <button class="nav-btn nav-active" data-screen="cargas">Cargas</button>
+        <button class="nav-btn" data-screen="operacoes">Operações</button>
+        <button class="nav-btn" data-screen="relatorios">Relatórios</button>
+        <button class="nav-btn" data-screen="config">Config</button>
+      </nav>
+
+    </header>
+
+    <!-- MAIN -->
+    <main class="app-main">
+
+      <!-- =========================
+           TELA: CARGAS
+      ========================== -->
+      <section class="screen screen-active" id="screen-cargas">
+        <section class="app-grid">
+
+          <section class="card form-card">
+            <div class="card-header">
+              <h2>Cadastrar carga</h2>
+              <p class="card-caption">Preencha os dados da carga para registrar.</p>
+            </div>
+
+            <form id="carga-form" class="form-grid">
+
+              <div class="form-group">
+                <label for="data">Data *</label>
+                <input type="date" id="data" name="data" required />
+              </div>
+
+              <div class="form-group">
+                <label for="numeroCarga">Nº da carga *</label>
+                <input type="text" id="numeroCarga" name="numeroCarga" required />
+              </div>
+
+              <div class="form-group">
+                <label for="transportadora">Transportadora *</label>
+                <input type="text" id="transportadora" name="transportadora" required />
+              </div>
+
+              <div class="form-group">
+                <label for="rota">Rota</label>
+                <input type="text" id="rota" name="rota" />
+              </div>
+
+              <div class="form-group">
+                <label for="volumes">Volumes</label>
+                <input type="number" id="volumes" name="volumes" min="0" />
+              </div>
+
+              <div class="form-group">
+                <label for="pedidos">Pedidos</label>
+                <input type="number" id="pedidos" name="pedidos" min="0" />
+              </div>
+
+              <div class="form-group">
+                <label for="carregador">Carregado por</label>
+                <input type="text" id="carregador" name="carregador" />
+              </div>
+
+              <div class="form-group">
+                <label for="situacao">Situação</label>
+                <select id="situacao" name="situacao">
+                  <option value="ok">OK</option>
+                  <option value="problema">Problema</option>
+                </select>
+              </div>
+
+              <div class="form-group form-group--full">
+                <label for="observacoes">Observações</label>
+                <textarea id="observacoes" name="observacoes" rows="3"></textarea>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">Salvar carga</button>
+              </div>
+
+            </form>
+          </section>
+
+        </section>
+      </section>
+
+      <!-- =========================
+           TELA: OPERAÇÕES
+      ========================== -->
+      <section class="screen" id="screen-operacoes">
+
+        <section class="card filters-card">
+          <div class="card-header">
+            <h2>Filtros & Resumo</h2>
+            <p class="card-caption">Filtre as cargas e acompanhe o total.</p>
+          </div>
+
+          <div class="filters-grid">
+            <div class="form-group">
+              <label for="filtro-data">Filtrar por data</label>
+              <input type="date" id="filtro-data" />
+            </div>
+
+            <div class="form-group">
+              <label for="filtro-busca">Busca geral</label>
+              <input type="text" id="filtro-busca" />
+            </div>
+
+            <div class="filters-actions">
+              <button id="btn-limpar-filtros" class="btn-ghost btn-sm">Limpar filtros</button>
+              <button id="btn-exportar" class="btn-outline btn-sm">Exportar PDF</button>
+            </div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Cargas</span>
+              <span id="total-cargas">0</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Volumes</span>
+              <span id="total-volumes">0</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Pedidos</span>
+              <span id="total-pedidos">0</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card list-card">
+          <div class="card-header">
+            <h2>Cargas registradas</h2>
+            <p class="card-caption">As cargas mais recentes aparecem primeiro.</p>
+          </div>
+          <div id="cargas-list" class="cargas-list"></div>
+        </section>
+
+      </section>
+
+      <!-- =========================
+           TELA: RELATÓRIOS
+      ========================== -->
+      <section class="screen" id="screen-relatorios">
+
+        <section class="card filters-card">
+          <div class="card-header">
+            <h2>Relatórios</h2>
+            <p class="card-caption">Análise e consolidação das cargas.</p>
+          </div>
+
+          <div class="filters-grid">
+            <div class="form-group">
+              <label for="relatorio-inicio">Data inicial</label>
+              <input type="date" id="relatorio-inicio">
+            </div>
+
+            <div class="form-group">
+              <label for="relatorio-fim">Data final</label>
+              <input type="date" id="relatorio-fim">
+            </div>
+
+            <div class="filters-actions">
+              <button id="btn-gerar-relatorio" class="btn-primary btn-sm">
+                Gerar relatório
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Cargas</span>
+              <span id="rel-total-cargas">0</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Volumes</span>
+              <span id="rel-total-volumes">0</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Pedidos</span>
+              <span id="rel-total-pedidos">0</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Cargas por dia</h3>
+          <canvas id="grafico-cargas-dia" height="120"></canvas>
+        </section>
+
+        <section class="card">
+          <h3>Volumes x Pedidos</h3>
+          <canvas id="grafico-volumes-pedidos" height="120"></canvas>
+        </section>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- App -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

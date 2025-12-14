@@ -1,0 +1,622 @@
+/* ==============================
+   RESET E VARIÁVEIS
+================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-main: #344db9;
+  --panel: rgba(2, 33, 105, 0.92);
+  --stroke: rgba(118, 149, 192, 0.6);
+  --text-main: #e5e7eb;
+  --text-muted: #9ca3af;
+  --primary: #3b82f6;
+  --danger: #ef4444;
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+/* ==============================
+   BASE
+================================ */
+body {
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: radial-gradient(circle at top, #020617, #01040f);
+  color: var(--text-main);
+}
+
+.app-page {
+  min-height: 100vh;
+  padding: 14px;
+}
+
+.app-shell {
+  max-width: 1400px;
+  margin: auto;
+}
+
+/* ==============================
+   HEADER
+================================ */
+.app-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px);
+  margin-bottom: 14px;
+}
+
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-logo {
+  height: 55px;
+  max-height: 60px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ==============================
+   USUÁRIO
+================================ */
+.user-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(4, 99, 122, 0.06);
+  font-size: 14px;
+}
+
+.user-avatar {
+  font-size: 16px;
+}
+
+.user-name {
+  color: var(--text-muted);
+}
+
+/* ==============================
+   BOTÕES
+================================ */
+button {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.btn-outline {
+  border: 1px solid var(--stroke);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-ghost {
+  border: 1px solid var(--stroke);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-sm {
+  font-size: 13px;
+}
+
+/* ==============================
+   MENU (DESKTOP)
+================================ */
+.app-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.nav-btn {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.nav-active {
+  background: var(--primary);
+}
+
+.nav-danger {
+  color: var(--danger);
+}
+
+/* ==============================
+   BOTÃO HAMBURGUER
+================================ */
+.mobile-menu-btn {
+  display: none;
+  font-size: 20px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--stroke);
+}
+
+/* ==============================
+   MAIN / CARDS
+================================ */
+.app-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow-soft);
+}
+
+.card-header {
+  margin-bottom: 10px;
+}
+
+.card-caption {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ==============================
+   FORMULÁRIOS
+================================ */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group--full {
+  grid-column: 1 / -1;
+}
+
+input,
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  color: var(--text-main);
+}
+
+.form-actions {
+  margin-top: 10px;
+}
+
+/* ==============================
+   LISTA DE CARGAS
+================================ */
+.cargas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ==============================
+   MOBILE (MENU DEFINITIVO)
+================================ */
+@media (max-width: 720px) {
+
+  .mobile-menu-btn {
+    display: block;
+  }
+
+  .app-header {
+    flex-wrap: nowrap;
+  }
+
+  .app-nav {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    padding: 12px;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(2, 33, 105, 0.97);
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(16px);
+    z-index: 9999;
+  }
+
+  .app-nav.open {
+    display: flex;
+  }
+}
+
+/* ==============================
+   AUTH (LOGIN / CADASTRO)
+================================ */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top, #032ce0, #21347a);
+  padding: 16px;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 420px;
+}
+
+.auth-card {
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px);
+}
+
+/* Logo / título */
+.auth-logo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.auth-logo h1 {
+  font-size: 22px;
+  margin-top: 10px;
+}
+
+.auth-logo p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* Formulário */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Botão ocupar largura total */
+.full-width {
+  width: 100%;
+}
+
+/* Rodapé */
+.auth-footer-text {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.auth-footer-text a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-footer-text a:hover {
+  text-decoration: underline;
+}
+
+/* ==============================
+   CARDS DE CARGAS REGISTRADAS
+================================ */
+
+.carga-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-soft);
+}
+
+.carga-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.carga-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.carga-date {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Meta informações */
+.carga-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  font-size: 14px;
+}
+
+.carga-meta span {
+  color: var(--text-muted);
+}
+
+/* Observações */
+.carga-obs {
+  font-size: 14px;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* Ações */
+.carga-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+/* Situação */
+.carga-status {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.carga-status.ok {
+  background: rgba(34, 197, 94, 0.925);
+  color: #22c55e;
+}
+
+.carga-status.problema {
+  background: rgba(239, 68, 68, 0.699);
+  color: #ef4444;
+}
+
+/* ==============================
+   AJUSTE DEFINITIVO DOS CARDS
+   (compatível com o HTML atual)
+================================ */
+
+/* Card base (caso venha como .card) */
+.cargas-list > .card,
+.cargas-list > div {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-soft);
+}
+
+/* Cabeçalho do card */
+.cargas-list h3,
+.cargas-list h4 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Texto secundário */
+.cargas-list p,
+.cargas-list span {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Botões dentro do card */
+.cargas-list button {
+  border: 1px solid var(--stroke);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Status OK / Problema (funciona por texto) */
+.cargas-list .ok {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.cargas-list .problema {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* ==============================
+   CARDS DE CARGAS — FINAL E CORRETO
+================================ */
+
+.carga-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+/* Header do card */
+.carga-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.carga-numero {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.carga-data {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: block;
+}
+
+/* Status (chip) */
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.chip--ok {
+  background: rgba(34, 197, 94, 0.555);
+  color: #22c55e;
+}
+
+.chip--problema {
+  background: rgba(239, 68, 68, 0.342);
+  color: #ef4444;
+}
+
+/* Corpo do card */
+.carga-body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.carga-body p {
+  margin-bottom: 4px;
+}
+
+/* Rodapé / ações */
+.carga-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.carga-footer button {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+}
+
+/* ==============================
+   SPLASH SCREEN (APP MOBILE)
+================================ */
+
+#splash-screen {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, #091b6b, #0d1635);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+#splash-screen img {
+  width: 120px;
+  animation: splashZoom 0.9s ease forwards;
+}
+
+@keyframes splashZoom {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Esconder splash */
+#splash-screen.hide {
+  animation: splashFadeOut 0.4s ease forwards;
+}
+
+@keyframes splashFadeOut {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* ==============================
+   CONTROLE DE TELAS
+================================ */
+
+.screen {
+  display: none;
+}
+
+.screen-active {
+  display: block;
+}

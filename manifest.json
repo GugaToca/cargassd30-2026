@@ -1,0 +1,21 @@
+{
+  "name": "Diário de Cargas",
+  "short_name": "Cargas",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#1e40af",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "imagem_logistica.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "imagem_logistica.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
