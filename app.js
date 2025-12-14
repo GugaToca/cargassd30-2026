@@ -74,8 +74,9 @@ function init() {
   // BOTÃO GERAR RELATÓRIO
 const btnGerarRelatorio = document.getElementById("btn-gerar-relatorio");
 if (btnGerarRelatorio) {
-  btnGerarRelatorio.addEventListener("click", gerarRelatorio);
+  btnGerarRelatorio.onclick = gerarRelatorio;
 }
+
 
 
   carregarCargas();
@@ -498,6 +499,8 @@ function gerarRelatorio() {
   atualizarResumoRelatorio(filtradas);
   gerarGraficoCargasPorDia(filtradas);
   gerarGraficoVolumesPedidos(filtradas);
+  atualizarKPIsRelatorio(filtradas);
+
 }
 
 function atualizarResumoRelatorio(lista) {
@@ -555,3 +558,55 @@ function gerarGraficoVolumesPedidos(lista) {
     }
   });
 }
+
+function atualizarKPIsRelatorio(lista) {
+  const total = lista.length;
+
+  const totalVolumes = lista.reduce(
+    (s, c) => s + (Number(c.volumes) || 0),
+    0
+  );
+
+  const mediaVolumes = total ? (totalVolumes / total).toFixed(1) : 0;
+
+  const problemas = lista.filter(c => c.situacao === "problema").length;
+
+  // ranking transportadoras
+  const mapa = {};
+  lista.forEach(c => {
+    if (!c.transportadora) return;
+    mapa[c.transportadora] = (mapa[c.transportadora] || 0) + 1;
+  });
+
+  const ranking = Object.entries(mapa)
+    .sort((a, b) => b[1] - a[1]);
+
+  document.getElementById("kpi-total-cargas").textContent = total;
+  document.getElementById("kpi-media-volumes").textContent = mediaVolumes;
+  document.getElementById("kpi-problemas").textContent = problemas;
+  document.getElementById("kpi-top-transportadora").textContent =
+    ranking.length ? ranking[0][0] : "-";
+
+  renderRankingTransportadoras(ranking);
+}
+
+function renderRankingTransportadoras(ranking) {
+  const container = document.getElementById("ranking-transportadoras");
+  if (!container) return;
+
+  if (!ranking.length) {
+    container.innerHTML = `<p class="empty-state">Sem dados no período.</p>`;
+    return;
+  }
+
+  container.innerHTML = ranking
+    .map(([nome, total], index) => `
+      <div class="ranking-item">
+        <span class="ranking-pos">${index + 1}º</span>
+        <span class="ranking-name">${nome}</span>
+        <span class="ranking-value">${total}</span>
+      </div>
+    `)
+    .join("");
+}
+

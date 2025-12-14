@@ -178,6 +178,7 @@
       ========================== -->
       <section class="screen" id="screen-relatorios">
 
+        <!-- FILTROS -->
         <section class="card filters-card">
           <div class="card-header">
             <h2>Relatórios</h2>
@@ -203,6 +204,44 @@
           </div>
         </section>
 
+        <!-- KPIs -->
+        <section class="card">
+          <div class="summary-grid">
+
+            <div class="summary-item">
+              <span class="summary-label">Total de cargas</span>
+              <span id="kpi-total-cargas" class="summary-value">0</span>
+            </div>
+
+            <div class="summary-item">
+              <span class="summary-label">Volumes médios / carga</span>
+              <span id="kpi-media-volumes" class="summary-value">0</span>
+            </div>
+
+            <div class="summary-item">
+              <span class="summary-label">Cargas com problema</span>
+              <span id="kpi-problemas" class="summary-value">0</span>
+            </div>
+
+            <div class="summary-item">
+              <span class="summary-label">Transportadora líder</span>
+              <span id="kpi-top-transportadora" class="summary-value">-</span>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- RANKING -->
+        <section class="card">
+          <div class="card-header">
+            <h3>Ranking de Transportadoras</h3>
+            <p class="card-caption">Quantidade de cargas no período selecionado.</p>
+          </div>
+
+          <div id="ranking-transportadoras" class="ranking-list"></div>
+        </section>
+
+        <!-- RESUMO -->
         <section class="card">
           <div class="summary-grid">
             <div class="summary-item">
@@ -220,6 +259,7 @@
           </div>
         </section>
 
+        <!-- GRÁFICOS -->
         <section class="card">
           <h3>Cargas por dia</h3>
           <canvas id="grafico-cargas-dia" height="120"></canvas>
