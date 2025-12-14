@@ -728,3 +728,21 @@ textarea {
     font-size: 1.5rem;
   }
 }
+
+/* ==============================
+   CONFIGURAÇÕES
+============================== */
+
+#screen-config {
+  display: none;
+  flex-direction: column;
+  gap: 22px;
+}
+
+#screen-config.screen-active {
+  display: flex;
+}
+
+#screen-config .summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}

@@ -610,3 +610,64 @@ function renderRankingTransportadoras(ranking) {
     .join("");
 }
 
+function carregarConfiguracoes() {
+  const empresa = localStorage.getItem("config_empresa") || "";
+  const cidade = localStorage.getItem("config_cidade") || "";
+  const autoRel = localStorage.getItem("config_auto_relatorio") === "true";
+
+  const elEmpresa = document.getElementById("config-empresa");
+  const elCidade = document.getElementById("config-cidade");
+  const elAuto = document.getElementById("config-auto-relatorio");
+
+  if (elEmpresa) elEmpresa.value = empresa;
+  if (elCidade) elCidade.value = cidade;
+  if (elAuto) elAuto.checked = autoRel;
+
+  if (window.usuarioAtual) {
+    document.getElementById("config-usuario").textContent =
+      usuarioAtual.displayName || "Usuário";
+    document.getElementById("config-email").textContent =
+      usuarioAtual.email || "-";
+  }
+}
+
+const btnSalvarConfig = document.getElementById("btn-salvar-config");
+if (btnSalvarConfig) {
+  btnSalvarConfig.onclick = () => {
+    localStorage.setItem(
+      "config_empresa",
+      document.getElementById("config-empresa").value
+    );
+    localStorage.setItem(
+      "config_cidade",
+      document.getElementById("config-cidade").value
+    );
+    localStorage.setItem(
+      "config_auto_relatorio",
+      document.getElementById("config-auto-relatorio").checked
+    );
+
+    alert("Configurações salvas com sucesso!");
+  };
+}
+
+const btnLimparDados = document.getElementById("btn-limpar-dados");
+if (btnLimparDados) {
+  btnLimparDados.onclick = () => {
+    if (confirm("Deseja limpar os dados locais do sistema?")) {
+      localStorage.clear();
+      location.reload();
+    }
+  };
+}
+
+const btnLogoutConfig = document.getElementById("btn-logout-config");
+if (btnLogoutConfig) {
+  btnLogoutConfig.onclick = () => {
+    logout();
+  };
+}
+
+if (target === "config") {
+  carregarConfiguracoes();
+}

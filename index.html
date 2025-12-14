@@ -272,6 +272,92 @@
 
       </section>
 
+      <!-- =========================
+     TELA: CONFIGURAÇÕES
+========================== -->
+<section class="screen" id="screen-config">
+
+  <!-- DADOS DA EMPRESA -->
+  <section class="card">
+    <div class="card-header">
+      <h2>Configurações</h2>
+      <p class="card-caption">Informações gerais do sistema</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="config-empresa">Nome da empresa</label>
+        <input type="text" id="config-empresa" placeholder="Ex: Transportadora XYZ">
+      </div>
+
+      <div class="form-group">
+        <label for="config-cidade">Cidade</label>
+        <input type="text" id="config-cidade" placeholder="Ex: São Paulo - SP">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button id="btn-salvar-config" class="btn-primary btn-sm">
+        Salvar configurações
+      </button>
+    </div>
+  </section>
+
+  <!-- USUÁRIO -->
+  <section class="card">
+    <div class="card-header">
+      <h3>Usuário</h3>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-item">
+        <span class="summary-label">Usuário logado</span>
+        <span id="config-usuario" class="summary-value">-</span>
+      </div>
+
+      <div class="summary-item">
+        <span class="summary-label">E-mail</span>
+        <span id="config-email" class="summary-value">-</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SISTEMA -->
+  <section class="card">
+    <div class="card-header">
+      <h3>Sistema</h3>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="config-auto-relatorio">
+          Gerar relatório automaticamente ao abrir a tela
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <!-- AÇÕES -->
+  <section class="card">
+    <div class="card-header">
+      <h3>Ações</h3>
+    </div>
+
+    <div class="form-actions">
+      <button id="btn-limpar-dados" class="btn-outline btn-sm">
+        Limpar dados locais
+      </button>
+
+      <button id="btn-logout-config" class="btn-ghost btn-sm">
+        Sair do sistema
+      </button>
+    </div>
+  </section>
+
+</section>
+
+
     </main>
   </div>
 
