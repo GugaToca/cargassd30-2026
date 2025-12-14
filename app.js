@@ -10,8 +10,6 @@ import {
   addDoc,
   getDocs,
   doc,
-  getDoc,
-  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -74,10 +72,12 @@ function init() {
   listEl.addEventListener("click", handleListClick);
 
   // BOTÃO GERAR RELATÓRIO
-  const btnGerarRelatorio = document.getElementById("btn-gerar-relatorio");
-  if (btnGerarRelatorio) {
-    btnGerarRelatorio.onclick = gerarRelatorio;
-  }
+const btnGerarRelatorio = document.getElementById("btn-gerar-relatorio");
+if (btnGerarRelatorio) {
+  btnGerarRelatorio.onclick = gerarRelatorio;
+}
+
+
 
   carregarCargas();
 }
@@ -419,17 +419,19 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-// NAVEGAÇÃO ENTRE TELAS (CHAMADA DE CONFIG NO LUGAR CERTO)
+// NAVEGAÇÃO ENTRE TELAS CODIGO ATUALIZADO HOJE
 const screens = document.querySelectorAll(".screen");
 
 document.querySelectorAll(".nav-btn").forEach(btn => {
   btn.addEventListener("click", () => {
 
+    // botão ativo
     document.querySelectorAll(".nav-btn").forEach(b =>
       b.classList.remove("nav-active")
     );
     btn.classList.add("nav-active");
 
+    // telas
     const target = btn.dataset.screen;
 
     screens.forEach(screen => {
@@ -440,14 +442,12 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
 
     if (targetScreen) {
       targetScreen.classList.add("screen-active");
-      if (target === "config") {
-        carregarConfiguracoes();
-      }
     } else {
       alert(`Tela "${target}" ainda será adicionada 👨‍💻`);
     }
   });
 });
+
 
 // MENU MOBILE
 const mobileMenuBtn = document.getElementById("mobile-menu-btn");
@@ -468,6 +468,7 @@ if ("serviceWorker" in navigator) {
 window.addEventListener("load", () => {
   const splash = document.getElementById("splash-screen");
 
+  // Só mostrar splash em modo app (PWA)
   const isPWA =
     window.matchMedia("(display-mode: standalone)").matches ||
     window.navigator.standalone === true;
@@ -477,45 +478,173 @@ window.addEventListener("load", () => {
       splash.classList.add("hide");
     }, 900);
   } else if (splash) {
-    splash.remove();
+    splash.remove(); // desktop / navegador normal
   }
 });
 
-// ======================
-// CONFIGURAÇÕES — FIRESTORE (NOVO)
-// ======================
-async function carregarConfiguracoes() {
-  if (!currentUser) return;
+function gerarRelatorio() {
+  let inicio = document.getElementById("relatorio-inicio").value;
+  let fim = document.getElementById("relatorio-fim").value;
 
-  const ref = doc(db, "users", currentUser.uid, "config", "system");
-  const snap = await getDoc(ref);
+  let filtradas = [...cargas];
 
-  if (snap.exists()) {
-    const data = snap.data();
-    document.getElementById("config-empresa").value = data.empresa || "";
-    document.getElementById("config-cidade").value = data.cidade || "";
-    document.getElementById("config-auto-relatorio").checked =
-      data.autoRelatorio === true;
+  if (inicio) {
+    filtradas = filtradas.filter(c => c.data >= inicio);
   }
 
-  document.getElementById("config-usuario").textContent =
-    currentUser.displayName || "Usuário";
-  document.getElementById("config-email").textContent =
-    currentUser.email || "-";
+  if (fim) {
+    filtradas = filtradas.filter(c => c.data <= fim);
+  }
+
+  atualizarResumoRelatorio(filtradas);
+  gerarGraficoCargasPorDia(filtradas);
+  gerarGraficoVolumesPedidos(filtradas);
+  atualizarKPIsRelatorio(filtradas);
+
+}
+
+function atualizarResumoRelatorio(lista) {
+  document.getElementById("rel-total-cargas").textContent = lista.length;
+
+  document.getElementById("rel-total-volumes").textContent =
+    lista.reduce((s, c) => s + (Number(c.volumes) || 0), 0);
+
+  document.getElementById("rel-total-pedidos").textContent =
+    lista.reduce((s, c) => s + (Number(c.pedidos) || 0), 0);
+}
+
+function gerarGraficoCargasPorDia(lista) {
+  const ctx = document.getElementById("grafico-cargas-dia");
+  if (!ctx) return;
+
+  const mapa = {};
+  lista.forEach(c => {
+    mapa[c.data] = (mapa[c.data] || 0) + 1;
+  });
+
+  const labels = Object.keys(mapa).sort();
+  const valores = labels.map(l => mapa[l]);
+
+  if (chartCargasDia) chartCargasDia.destroy();
+
+  chartCargasDia = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Cargas",
+        data: valores
+      }]
+    }
+  });
+}
+
+function gerarGraficoVolumesPedidos(lista) {
+  const ctx = document.getElementById("grafico-volumes-pedidos");
+  if (!ctx) return;
+
+  const totalVolumes = lista.reduce((s, c) => s + (Number(c.volumes) || 0), 0);
+  const totalPedidos = lista.reduce((s, c) => s + (Number(c.pedidos) || 0), 0);
+
+  if (chartVolumesPedidos) chartVolumesPedidos.destroy();
+
+  chartVolumesPedidos = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Volumes", "Pedidos"],
+      datasets: [{
+        data: [totalVolumes, totalPedidos]
+      }]
+    }
+  });
+}
+
+function atualizarKPIsRelatorio(lista) {
+  const total = lista.length;
+
+  const totalVolumes = lista.reduce(
+    (s, c) => s + (Number(c.volumes) || 0),
+    0
+  );
+
+  const mediaVolumes = total ? (totalVolumes / total).toFixed(1) : 0;
+
+  const problemas = lista.filter(c => c.situacao === "problema").length;
+
+  // ranking transportadoras
+  const mapa = {};
+  lista.forEach(c => {
+    if (!c.transportadora) return;
+    mapa[c.transportadora] = (mapa[c.transportadora] || 0) + 1;
+  });
+
+  const ranking = Object.entries(mapa)
+    .sort((a, b) => b[1] - a[1]);
+
+  document.getElementById("kpi-total-cargas").textContent = total;
+  document.getElementById("kpi-media-volumes").textContent = mediaVolumes;
+  document.getElementById("kpi-problemas").textContent = problemas;
+  document.getElementById("kpi-top-transportadora").textContent =
+    ranking.length ? ranking[0][0] : "-";
+
+  renderRankingTransportadoras(ranking);
+}
+
+function renderRankingTransportadoras(ranking) {
+  const container = document.getElementById("ranking-transportadoras");
+  if (!container) return;
+
+  if (!ranking.length) {
+    container.innerHTML = `<p class="empty-state">Sem dados no período.</p>`;
+    return;
+  }
+
+  container.innerHTML = ranking
+    .map(([nome, total], index) => `
+      <div class="ranking-item">
+        <span class="ranking-pos">${index + 1}º</span>
+        <span class="ranking-name">${nome}</span>
+        <span class="ranking-value">${total}</span>
+      </div>
+    `)
+    .join("");
+}
+
+function carregarConfiguracoes() {
+  const empresa = localStorage.getItem("config_empresa") || "";
+  const cidade = localStorage.getItem("config_cidade") || "";
+  const autoRel = localStorage.getItem("config_auto_relatorio") === "true";
+
+  const elEmpresa = document.getElementById("config-empresa");
+  const elCidade = document.getElementById("config-cidade");
+  const elAuto = document.getElementById("config-auto-relatorio");
+
+  if (elEmpresa) elEmpresa.value = empresa;
+  if (elCidade) elCidade.value = cidade;
+  if (elAuto) elAuto.checked = autoRel;
+
+  if (window.usuarioAtual) {
+    document.getElementById("config-usuario").textContent =
+      usuarioAtual.displayName || "Usuário";
+    document.getElementById("config-email").textContent =
+      usuarioAtual.email || "-";
+  }
 }
 
 const btnSalvarConfig = document.getElementById("btn-salvar-config");
 if (btnSalvarConfig) {
-  btnSalvarConfig.onclick = async () => {
-    await setDoc(
-      doc(db, "users", currentUser.uid, "config", "system"),
-      {
-        empresa: document.getElementById("config-empresa").value,
-        cidade: document.getElementById("config-cidade").value,
-        autoRelatorio: document.getElementById("config-auto-relatorio").checked,
-        updatedAt: serverTimestamp()
-      },
-      { merge: true }
+  btnSalvarConfig.onclick = () => {
+    localStorage.setItem(
+      "config_empresa",
+      document.getElementById("config-empresa").value
+    );
+    localStorage.setItem(
+      "config_cidade",
+      document.getElementById("config-cidade").value
+    );
+    localStorage.setItem(
+      "config_auto_relatorio",
+      document.getElementById("config-auto-relatorio").checked
     );
 
     alert("Configurações salvas com sucesso!");
@@ -526,6 +655,7 @@ const btnLimparDados = document.getElementById("btn-limpar-dados");
 if (btnLimparDados) {
   btnLimparDados.onclick = () => {
     if (confirm("Deseja limpar os dados locais do sistema?")) {
+      localStorage.clear();
       location.reload();
     }
   };
@@ -536,4 +666,8 @@ if (btnLogoutConfig) {
   btnLogoutConfig.onclick = () => {
     logout();
   };
+}
+
+if (target === "config") {
+  carregarConfiguracoes();
 }
