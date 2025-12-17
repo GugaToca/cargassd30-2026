@@ -1,10 +1,10 @@
 // =======================================
-// SERVICE WORKER — DIÁRIO DE CARGAS
+// SERVICE WORKER — SEGURO (SEM POST)
 // =======================================
 
-const CACHE_NAME = "diario-cargas-v9";
+const CACHE_NAME = "diario-cargas-v10";
 
-const STATIC_ASSETS = [
+const STATIC_FILES = [
   "./",
   "./index.html",
   "./login.html",
@@ -14,55 +14,40 @@ const STATIC_ASSETS = [
   "./auth.js",
   "./firebase-config.js",
   "./manifest.json",
-  "./imagem_logistica.png",
-  "https://cdn.jsdelivr.net/npm/chart.js"
+  "./imagem_logistica.png"
 ];
 
-// =======================================
 // INSTALL
-// =======================================
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_FILES))
   );
 });
 
-// =======================================
 // ACTIVATE
-// =======================================
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
+        keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : null))
       )
     )
   );
-
   self.clients.claim();
 });
 
-// =======================================
-// FETCH
-// =======================================
+// FETCH — EXTREMAMENTE RESTRITIVO
 self.addEventListener("fetch", (event) => {
 
-  // 🚫 IGNORA qualquer requisição que NÃO seja GET
+  // 🚫 NUNCA intercepta POST
   if (event.request.method !== "GET") {
     return;
   }
 
   const url = event.request.url;
 
-  // 🚫 IGNORA Firebase / Google / Auth
+  // 🚫 IGNORA Firebase / Google
   if (
     url.includes("firebase") ||
     url.includes("googleapis") ||
@@ -73,31 +58,8 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-
-      return fetch(event.request)
-        .then((response) => {
-
-          // Só cacheia respostas válidas
-          if (!response || response.status !== 200 || response.type !== "basic") {
-            return response;
-          }
-
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
-          });
-
-          return response;
-        })
-        .catch(() => {
-          // fallback simples offline
-          if (event.request.destination === "document") {
-            return caches.match("./index.html");
-          }
-        });
+      if (cached) return cached;
+      return fetch(event.request);
     })
   );
 });
