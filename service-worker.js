@@ -1,6 +1,10 @@
-const CACHE_NAME = "diario-cargas-v6"; // 👈 MUDE A VERSÃO SEMPRE QUE ATUALIZAR
+// =======================================
+// SERVICE WORKER — DIÁRIO DE CARGAS
+// =======================================
 
-const FILES_TO_CACHE = [
+const CACHE_NAME = "diario-cargas-v9";
+
+const STATIC_ASSETS = [
   "./",
   "./index.html",
   "./login.html",
@@ -9,45 +13,91 @@ const FILES_TO_CACHE = [
   "./app.js",
   "./auth.js",
   "./firebase-config.js",
-  "./imagem_logistica.png"
+  "./manifest.json",
+  "./imagem_logistica.png",
+  "https://cdn.jsdelivr.net/npm/chart.js"
 ];
 
-// Instala o novo SW
+// =======================================
+// INSTALL
+// =======================================
 self.addEventListener("install", (event) => {
-  self.skipWaiting(); // força ativação imediata
+  self.skipWaiting();
+
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(FILES_TO_CACHE))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
+    })
   );
 });
 
-// Ativa e limpa caches antigos
+// =======================================
+// ACTIVATE
+// =======================================
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) =>
+    caches.keys().then((keys) =>
       Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
           }
         })
       )
     )
   );
-  self.clients.claim(); // aplica em todas as abas
+
+  self.clients.claim();
 });
 
-// Busca
+// =======================================
+// FETCH
+// =======================================
 self.addEventListener("fetch", (event) => {
+
+  // 🚫 IGNORA qualquer requisição que NÃO seja GET
+  if (event.request.method !== "GET") {
+    return;
+  }
+
+  const url = event.request.url;
+
+  // 🚫 IGNORA Firebase / Google / Auth
+  if (
+    url.includes("firebase") ||
+    url.includes("googleapis") ||
+    url.includes("gstatic")
+  ) {
+    return;
+  }
+
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, clone);
+    caches.match(event.request).then((cached) => {
+      if (cached) {
+        return cached;
+      }
+
+      return fetch(event.request)
+        .then((response) => {
+
+          // Só cacheia respostas válidas
+          if (!response || response.status !== 200 || response.type !== "basic") {
+            return response;
+          }
+
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, clone);
+          });
+
+          return response;
+        })
+        .catch(() => {
+          // fallback simples offline
+          if (event.request.destination === "document") {
+            return caches.match("./index.html");
+          }
         });
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+    })
   );
 });
-
