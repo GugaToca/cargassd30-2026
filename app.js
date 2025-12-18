@@ -307,3 +307,13 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+window.addEventListener("load", () => {
+  const splash = document.getElementById("splash-screen");
+
+  if (splash) {
+    setTimeout(() => {
+      splash.classList.add("hide");
+    }, 600);
+  }
+});
