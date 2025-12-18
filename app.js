@@ -317,3 +317,15 @@ window.addEventListener("load", () => {
     }, 600);
   }
 });
+
+// ================================
+// MENU MOBILE
+// ================================
+const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+const appNav = document.getElementById("app-nav");
+
+if (mobileMenuBtn && appNav) {
+  mobileMenuBtn.addEventListener("click", () => {
+    appNav.classList.toggle("open");
+  });
+}
