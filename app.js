@@ -329,3 +329,30 @@ if (mobileMenuBtn && appNav) {
     appNav.classList.toggle("open");
   });
 }
+
+// ================================
+// NAVEGAÇÃO ENTRE TELAS
+// ================================
+const navButtons = document.querySelectorAll(".nav-btn");
+const screens = document.querySelectorAll(".screen");
+
+navButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.screen;
+
+    // remove estado ativo
+    navButtons.forEach(b => b.classList.remove("nav-active"));
+    screens.forEach(s => s.classList.remove("screen-active"));
+
+    // ativa botão e tela corretos
+    btn.classList.add("nav-active");
+    const screen = document.getElementById(`screen-${target}`);
+    if (screen) {
+      screen.classList.add("screen-active");
+    }
+
+    // fecha menu mobile após clique
+    const appNav = document.getElementById("app-nav");
+    if (appNav) appNav.classList.remove("open");
+  });
+});
