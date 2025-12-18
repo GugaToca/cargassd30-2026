@@ -2,7 +2,7 @@
 // SERVICE WORKER — SEGURO (SEM POST)
 // =======================================
 
-const CACHE_NAME = "diario-cargas-v10";
+const CACHE_NAME = "diario-cargas-v11";
 
 const STATIC_FILES = [
   "./",
@@ -63,3 +63,4 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
