@@ -1,367 +1,792 @@
-// ================================
-// app.js — NOVA SD LOGÍSTICA 2.0
-// ================================
+import { firebaseConfig } from "./firebase-config.js";
 
-let chartCargasDia = null;
-let chartVolumesPedidos = null;
-
-import { getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import { auth, db } from "./firebase-config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+import {
+  getFirestore,
   collection,
-  addDoc,
-  getDocs,
   doc,
+  addDoc,
   setDoc,
   updateDoc,
   deleteDoc,
+  getDoc,
+  getDocs,
   query,
+  where,
   orderBy,
+  limit,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+// ---------- INIT ----------
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-import { logout } from "./auth.js";
+// ---------- HELPERS ----------
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
 
-const splashEl = document.getElementById("splash-screen");
-function hideSplash() {
-  splashEl?.classList.add("hide");
+function esc(str=""){
+  return String(str).replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[m]));
 }
 
+function todayISO(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
 
-// ================================
-// ESTADO GLOBAL
-// ================================
+function toCSV(rows){
+  const sep = ";";
+  return rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(sep)).join("\n");
+}
+
+function downloadText(filename, content, mime="text/plain"){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- UI REFS ----------
+const authView = $("#authView");
+const appView = $("#appView");
+
+const userBadge = $("#userBadge");
+const btnLogout = $("#btnLogout");
+
+const loginEmail = $("#loginEmail");
+const loginPass = $("#loginPass");
+const btnLogin = $("#btnLogin");
+const btnRegister = $("#btnRegister");
+const authMsg = $("#authMsg");
+
+const yearEl = $("#year");
+
+// Transportadoras
+const tNome = $("#tNome");
+const tCodigo = $("#tCodigo");
+const tContato = $("#tContato");
+const btnAddTransportadora = $("#btnAddTransportadora");
+const tMsg = $("#tMsg");
+const tSearch = $("#tSearch");
+const transportadorasList = $("#transportadorasList");
+
+// Cargas
+const cTransportadora = $("#cTransportadora");
+const cData = $("#cData");
+const cPlaca = $("#cPlaca");
+const cMotorista = $("#cMotorista");
+const cProblema = $("#cProblema");
+const cObs = $("#cObs");
+const btnAddCarga = $("#btnAddCarga");
+const cMsg = $("#cMsg");
+
+const btnRefreshCargas = $("#btnRefreshCargas");
+const fStatus = $("#fStatus");
+const fTransportadora = $("#fTransportadora");
+const fBusca = $("#fBusca");
+const cargasList = $("#cargasList");
+
+// Detail
+const cargaDetailWrap = $("#cargaDetail");
+const detailEmpty = $("#detailEmpty");
+const detailResumo = $("#detailResumo");
+const btnCloseDetail = $("#btnCloseDetail");
+const btnDeleteCarga = $("#btnDeleteCarga");
+const btnToggleProblema = $("#btnToggleProblema");
+const btnEditObs = $("#btnEditObs");
+
+// Pedidos
+const pNumero = $("#pNumero");
+const pCliente = $("#pCliente");
+const pVolumes = $("#pVolumes");
+const pObs = $("#pObs");
+const btnAddPedido = $("#btnAddPedido");
+const pMsg = $("#pMsg");
+const pedidosList = $("#pedidosList");
+
+// Dashboard
+const kpiTotal = $("#kpiTotal");
+const kpiOk = $("#kpiOk");
+const kpiErr = $("#kpiErr");
+const dashLastCargas = $("#dashLastCargas");
+const dashTransportadoras = $("#dashTransportadoras");
+const dashErros = $("#dashErros");
+
+// Relatórios
+const rDe = $("#rDe");
+const rAte = $("#rAte");
+const btnGerarRelatorio = $("#btnGerarRelatorio");
+const btnExportCSV = $("#btnExportCSV");
+const relatorioResumo = $("#relatorioResumo");
+const relatorioTabela = $("#relatorioTabela");
+
+// Tabs
+const navItems = $$(".navItem");
+const tabs = $$(".tab");
+
+// ---------- STATE ----------
 let currentUser = null;
-let empresaId = null;
-let cargas = [];
-let cargaEmEdicaoId = null;
+let cacheTransportadoras = [];
+let cacheCargas = [];
+let selectedCargaId = null;
+let lastReportRows = []; // para export CSV
 
-// ================================
-// ELEMENTOS DOM
-// ================================
-const form = document.getElementById("carga-form");
-const listEl = document.getElementById("cargas-list");
-const filtroDataEl = document.getElementById("filtro-data");
-const filtroBuscaEl = document.getElementById("filtro-busca");
-const totalCargasEl = document.getElementById("total-cargas");
-const totalVolumesEl = document.getElementById("total-volumes");
-const totalPedidosEl = document.getElementById("total-pedidos");
-const btnExportar = document.getElementById("btn-exportar");
-const btnLimparFiltros = document.getElementById("btn-limpar-filtros");
-const btnLogout = document.getElementById("logout-header");
-const usuarioNomeEl = document.getElementById("usuario-nome");
-
-// ================================
-// AUTENTICAÇÃO
-// ================================
-onAuthStateChanged(auth, async (user) => {
-  try {
-    if (!user) {
-      hideSplash();
-      window.location.href = "login.html";
-      return;
-    }
-
-    currentUser = user;
-
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
-
-    if (!snap.exists() || !snap.data()?.empresaId) {
-      const empresaRef = await addDoc(collection(db, "empresas"), {
-        nome: "Minha Empresa",
-        cidade: "",
-        criadoEm: serverTimestamp()
-      });
-
-      await setDoc(userRef, {
-        nome: user.displayName || "",
-        email: user.email,
-        empresaId: empresaRef.id,
-        role: "admin",
-        criadoEm: serverTimestamp()
-      });
-
-      await setDoc(doc(db, "empresas", empresaRef.id, "usuarios", user.uid), {
-        nome: user.displayName || "",
-        email: user.email,
-        role: "admin",
-        criadoEm: serverTimestamp()
-      });
-
-      empresaId = empresaRef.id;
-    } else {
-      empresaId = snap.data().empresaId;
-    }
-
-    usuarioNomeEl.textContent = user.displayName || user.email;
-    init();
-    hideSplash();
-  } catch (err) {
-    console.error("Erro crítico:", err);
-    hideSplash();
-    alert("Erro ao inicializar o sistema.");
+// ---------- AUTH ----------
+btnLogin.addEventListener("click", async () => {
+  authMsg.textContent = "";
+  try{
+    await signInWithEmailAndPassword(auth, loginEmail.value.trim(), loginPass.value);
+  }catch(e){
+    authMsg.textContent = "Erro ao entrar: " + (e?.message || e);
   }
 });
 
-
-
-// ================================
-// INIT
-// ================================
-function init() {
-  const hoje = new Date().toISOString().slice(0, 10);
-  if (form?.data) form.data.value = hoje;
-
-  form.addEventListener("submit", handleSubmit);
-  filtroDataEl.addEventListener("change", renderCargas);
-  filtroBuscaEl.addEventListener("input", renderCargas);
-  btnExportar.addEventListener("click", exportarPDF);
-  btnLimparFiltros.addEventListener("click", limparFiltros);
-  btnLogout.addEventListener("click", logout);
-  listEl.addEventListener("click", handleListClick);
-
-  const btnGerarRelatorio = document.getElementById("btn-gerar-relatorio");
-  if (btnGerarRelatorio) btnGerarRelatorio.onclick = gerarRelatorio;
-
-  carregarConfiguracoes();
-  carregarCargas();
-
-    // 👇 ESCONDE SPLASH SCREEN
-  document.getElementById("splash-screen")?.classList.add("hide");
-}
-
-// ================================
-// FIRESTORE — CARGAS POR EMPRESA
-// ================================
-async function carregarCargas() {
-  listEl.innerHTML = `<p class="info-text">Carregando cargas...</p>`;
-
-  try {
-    const ref = collection(db, "empresas", empresaId, "cargas");
-    const q = query(ref, orderBy("data", "desc"), orderBy("numeroCarga", "desc"));
-    const snap = await getDocs(q);
-
-    cargas = snap.docs.map(d => ({
-      id: d.id,
-      ...d.data()
-    }));
-
-    renderCargas();
-  } catch (err) {
-    console.error(err);
-    listEl.innerHTML = `<p class="error-text">Erro ao carregar cargas.</p>`;
+btnRegister.addEventListener("click", async () => {
+  authMsg.textContent = "";
+  try{
+    await createUserWithEmailAndPassword(auth, loginEmail.value.trim(), loginPass.value);
+  }catch(e){
+    authMsg.textContent = "Erro ao criar conta: " + (e?.message || e);
   }
+});
+
+btnLogout.addEventListener("click", async () => {
+  await signOut(auth);
+});
+
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user || null;
+
+  if(!currentUser){
+    authView.classList.remove("hidden");
+    appView.classList.add("hidden");
+    userBadge.classList.add("hidden");
+    btnLogout.classList.add("hidden");
+    return;
+  }
+
+  authView.classList.add("hidden");
+  appView.classList.remove("hidden");
+
+  userBadge.textContent = currentUser.email;
+  userBadge.classList.remove("hidden");
+  btnLogout.classList.remove("hidden");
+
+  // defaults
+  yearEl.textContent = new Date().getFullYear();
+  cData.value = todayISO();
+
+  // load data
+  await loadTransportadoras();
+  await loadCargas();
+  await renderDashboard();
+});
+
+// ---------- NAV ----------
+navItems.forEach(btn => {
+  btn.addEventListener("click", () => {
+    navItems.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    tabs.forEach(t => t.classList.add("hidden"));
+    $(`#tab-${tab}`).classList.remove("hidden");
+  });
+});
+
+// ---------- FIRESTORE REFS ----------
+const colTransportadoras = () => collection(db, "transportadoras");
+const colCargas = () => collection(db, "cargas");
+const colPedidos = (cargaId) => collection(db, "cargas", cargaId, "pedidos");
+
+// ---------- TRANSPORTADORAS ----------
+btnAddTransportadora.addEventListener("click", async () => {
+  tMsg.textContent = "";
+  const nome = tNome.value.trim();
+  if(!nome){
+    tMsg.textContent = "Informe o nome.";
+    return;
+  }
+
+  const payload = {
+    nome,
+    codigo: tCodigo.value.trim(),
+    contato: tContato.value.trim(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+
+  try{
+    await addDoc(colTransportadoras(), payload);
+    tNome.value = ""; tCodigo.value = ""; tContato.value = "";
+    tMsg.textContent = "Salvo ✅";
+    await loadTransportadoras();
+    await renderDashboard();
+  }catch(e){
+    tMsg.textContent = "Erro: " + (e?.message || e);
+  }
+});
+
+tSearch.addEventListener("input", () => renderTransportadorasTable());
+
+async function loadTransportadoras(){
+  const qy = query(colTransportadoras(), orderBy("nome"));
+  const snap = await getDocs(qy);
+  cacheTransportadoras = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  fillTransportadoraSelects();
+  renderTransportadorasTable();
 }
 
-// ================================
-// FILTROS
-// ================================
-function getCargasFiltradas() {
-  const dataFiltro = filtroDataEl.value;
-  const busca = filtroBuscaEl.value.trim().toLowerCase();
+function fillTransportadoraSelects(){
+  const options = cacheTransportadoras.map(t => `<option value="${t.id}">${esc(t.nome)}${t.codigo ? " • " + esc(t.codigo) : ""}</option>`).join("");
+  cTransportadora.innerHTML = `<option value="">Selecione...</option>${options}`;
 
-  return cargas.filter(c => {
-    if (dataFiltro && c.data !== dataFiltro) return false;
+  // filtro
+  fTransportadora.innerHTML = `<option value="TODAS">Todas</option>${options}`;
+}
 
-    if (busca) {
-      const texto = [
-        c.numeroCarga,
-        c.transportadora,
-        c.rota,
-        c.carregador,
-        c.observacoes
-      ].filter(Boolean).join(" ").toLowerCase();
+function renderTransportadorasTable(){
+  const term = (tSearch.value || "").trim().toLowerCase();
+  const rows = cacheTransportadoras
+    .filter(t => {
+      if(!term) return true;
+      return (t.nome||"").toLowerCase().includes(term)
+        || (t.codigo||"").toLowerCase().includes(term)
+        || (t.contato||"").toLowerCase().includes(term);
+    })
+    .map(t => `
+      <tr>
+        <td><strong>${esc(t.nome)}</strong><div class="muted small">${esc(t.codigo||"")}</div></td>
+        <td>${esc(t.contato||"—")}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btnGhost" data-act="editT" data-id="${t.id}">Editar</button>
+            <button class="btn btnDanger" data-act="delT" data-id="${t.id}">Excluir</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
 
-      return texto.includes(busca);
-    }
-    return true;
+  transportadorasList.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>Transportadora</th><th>Contato</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td colspan="3" class="muted">Nenhuma transportadora.</td></tr>`}
+      </tbody>
+    </table>
+  `;
+
+  transportadorasList.querySelectorAll("button[data-act]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const act = btn.dataset.act;
+      const item = cacheTransportadoras.find(x => x.id === id);
+      if(!item) return;
+
+      if(act === "delT"){
+        if(!confirm(`Excluir transportadora "${item.nome}"?`)) return;
+        await deleteDoc(doc(db, "transportadoras", id));
+        await loadTransportadoras();
+        await renderDashboard();
+      }
+
+      if(act === "editT"){
+        const novoNome = prompt("Nome:", item.nome);
+        if(novoNome === null) return;
+        const novoCodigo = prompt("Código:", item.codigo || "");
+        if(novoCodigo === null) return;
+        const novoContato = prompt("Contato:", item.contato || "");
+        if(novoContato === null) return;
+
+        await updateDoc(doc(db, "transportadoras", id), {
+          nome: novoNome.trim(),
+          codigo: novoCodigo.trim(),
+          contato: novoContato.trim(),
+          updatedAt: serverTimestamp()
+        });
+
+        await loadTransportadoras();
+        await renderDashboard();
+      }
+    });
   });
 }
 
-// ================================
-// RENDER
-// ================================
-function renderCargas() {
-  const filtradas = getCargasFiltradas();
+// ---------- CARGAS ----------
+btnAddCarga.addEventListener("click", async () => {
+  cMsg.textContent = "";
 
-  listEl.innerHTML = filtradas.length
-    ? filtradas.map(criarCardCarga).join("")
-    : `<p class="empty-state">Nenhuma carga encontrada.</p>`;
+  const transportadoraId = cTransportadora.value;
+  if(!transportadoraId){
+    cMsg.textContent = "Selecione uma transportadora.";
+    return;
+  }
 
-  atualizarResumo(filtradas);
+  const t = cacheTransportadoras.find(x => x.id === transportadoraId);
+  const dataDespacho = cData.value || todayISO();
+
+  const payload = {
+    transportadoraId,
+    transportadoraNome: t?.nome || "",
+    dataDespacho,
+    placa: cPlaca.value.trim(),
+    motorista: cMotorista.value.trim(),
+    problema: cProblema.value,
+    observacao: cObs.value.trim(),
+    totalPedidos: 0,
+    totalVolumes: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+
+  try{
+    const ref = await addDoc(colCargas(), payload);
+    cPlaca.value = ""; cMotorista.value = ""; cObs.value = ""; cProblema.value = "OK";
+    cMsg.textContent = "Carga criada ✅";
+    await loadCargas();
+    await renderDashboard();
+    await openCargaDetail(ref.id);
+  }catch(e){
+    cMsg.textContent = "Erro: " + (e?.message || e);
+  }
+});
+
+btnRefreshCargas.addEventListener("click", async () => {
+  await loadCargas();
+  await renderDashboard();
+});
+
+[fStatus, fTransportadora, fBusca].forEach(el => el.addEventListener("input", () => renderCargasTable()));
+
+async function loadCargas(){
+  // Carrega últimas 300 (pra MVP). Depois a gente pagina e melhora.
+  const qy = query(colCargas(), orderBy("dataDespacho","desc"), limit(300));
+  const snap = await getDocs(qy);
+  cacheCargas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderCargasTable();
 }
 
-function limparFiltros(e) {
-  e.preventDefault();
-  filtroDataEl.value = "";
-  filtroBuscaEl.value = "";
-  renderCargas();
-}
+function renderCargasTable(){
+  const st = fStatus.value;
+  const tr = fTransportadora.value;
+  const term = (fBusca.value || "").trim().toLowerCase();
 
-// ================================
-// CARD
-// ================================
-function criarCardCarga(c) {
-  return `
-    <article class="carga-card" data-id="${c.id}">
-      <header class="carga-header">
-        <div>
-          <span class="carga-numero">Carga ${escapeHtml(c.numeroCarga || "")}</span>
-          <span class="carga-data">${formatarData(c.data)}</span>
+  const filtered = cacheCargas.filter(c => {
+    if(st !== "TODOS" && c.problema !== st) return false;
+    if(tr !== "TODAS" && c.transportadoraId !== tr) return false;
+    if(term){
+      const blob = `${c.placa||""} ${c.motorista||""} ${c.observacao||""} ${c.transportadoraNome||""}`.toLowerCase();
+      if(!blob.includes(term)) return false;
+    }
+    return true;
+  });
+
+  const rows = filtered.map(c => `
+    <tr>
+      <td>
+        <strong>${esc(c.dataDespacho || "—")}</strong>
+        <div class="muted small">${esc(c.transportadoraNome || "")}</div>
+      </td>
+      <td>${esc(c.placa || "—")}<div class="muted small">${esc(c.motorista || "")}</div></td>
+      <td>
+        <span class="tag ${c.problema === "OK" ? "ok":"err"}">${esc(c.problema)}</span>
+        <div class="muted small">${esc(c.observacao || "")}</div>
+      </td>
+      <td>${Number(c.totalPedidos||0)} / ${Number(c.totalVolumes||0)}</td>
+      <td>
+        <div class="actions">
+          <button class="btn btnGhost" data-act="openC" data-id="${c.id}">Abrir</button>
         </div>
-        <span class="chip chip--${c.situacao || "ok"}">
-          ${c.situacao === "problema" ? "Problema" : "OK"}
-        </span>
-      </header>
+      </td>
+    </tr>
+  `).join("");
 
-      <div class="carga-body">
-        <p><strong>Transportadora:</strong> ${escapeHtml(c.transportadora || "-")}</p>
-        <p><strong>Rota:</strong> ${escapeHtml(c.rota || "-")}</p>
-        <p><strong>Volumes:</strong> ${c.volumes || "-"} • <strong>Pedidos:</strong> ${c.pedidos || "-"}</p>
-        <p><strong>Carregador:</strong> ${escapeHtml(c.carregador || "-")}</p>
-        <p><strong>Obs:</strong> ${escapeHtml(c.observacoes || "-")}</p>
-      </div>
+  cargasList.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Data / Transportadora</th>
+          <th>Veículo</th>
+          <th>Status</th>
+          <th>Pedidos/Volumes</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td colspan="5" class="muted">Nenhuma carga encontrada.</td></tr>`}
+      </tbody>
+    </table>
+  `;
 
-      <footer class="carga-footer">
-        <button class="btn-ghost btn-sm btn-edit" data-id="${c.id}">Editar</button>
-        <button class="btn-danger-outline btn-sm btn-delete" data-id="${c.id}">Excluir</button>
-      </footer>
-    </article>
+  cargasList.querySelectorAll("button[data-act='openC']").forEach(btn => {
+    btn.addEventListener("click", () => openCargaDetail(btn.dataset.id));
+  });
+}
+
+// ---------- DETAIL ----------
+btnCloseDetail.addEventListener("click", () => closeDetail());
+
+btnDeleteCarga.addEventListener("click", async () => {
+  if(!selectedCargaId) return;
+  const item = cacheCargas.find(x => x.id === selectedCargaId);
+  if(!confirm(`Excluir a carga de ${item?.dataDespacho || ""} (${item?.transportadoraNome || ""})?`)) return;
+
+  // MVP: não remove subcoleção automaticamente (Firestore não tem cascade nativo).
+  // A gente evita dor de cabeça: avisa o usuário.
+  alert("Atenção: pedidos (subcoleção) não são removidos automaticamente neste MVP. Para remover tudo, use uma Cloud Function depois.");
+
+  await deleteDoc(doc(db, "cargas", selectedCargaId));
+  selectedCargaId = null;
+  await loadCargas();
+  await renderDashboard();
+  closeDetail();
+});
+
+btnToggleProblema.addEventListener("click", async () => {
+  if(!selectedCargaId) return;
+  const item = cacheCargas.find(x => x.id === selectedCargaId);
+  if(!item) return;
+
+  const next = item.problema === "OK" ? "ERRO" : "OK";
+  await updateDoc(doc(db, "cargas", selectedCargaId), {
+    problema: next,
+    updatedAt: serverTimestamp()
+  });
+
+  await loadCargas();
+  await renderDashboard();
+  await openCargaDetail(selectedCargaId);
+});
+
+btnEditObs.addEventListener("click", async () => {
+  if(!selectedCargaId) return;
+  const item = cacheCargas.find(x => x.id === selectedCargaId);
+  const obs = prompt("Observação:", item?.observacao || "");
+  if(obs === null) return;
+
+  await updateDoc(doc(db, "cargas", selectedCargaId), {
+    observacao: obs.trim(),
+    updatedAt: serverTimestamp()
+  });
+
+  await loadCargas();
+  await renderDashboard();
+  await openCargaDetail(selectedCargaId);
+});
+
+async function openCargaDetail(cargaId){
+  selectedCargaId = cargaId;
+
+  detailEmpty.classList.add("hidden");
+  cargaDetailWrap.classList.remove("hidden");
+  btnDeleteCarga.classList.remove("hidden");
+
+  const c = cacheCargas.find(x => x.id === cargaId);
+  if(!c){
+    // se não estiver no cache, busca
+    const snap = await getDoc(doc(db, "cargas", cargaId));
+    if(!snap.exists()) return;
+  }
+
+  renderDetailResumo();
+  await loadPedidos();
+}
+
+function closeDetail(){
+  selectedCargaId = null;
+  cargaDetailWrap.classList.add("hidden");
+  btnDeleteCarga.classList.add("hidden");
+  detailEmpty.classList.remove("hidden");
+  pedidosList.innerHTML = "";
+  pMsg.textContent = "";
+  pNumero.value = ""; pCliente.value = ""; pVolumes.value = ""; pObs.value = "";
+}
+
+function renderDetailResumo(){
+  const c = cacheCargas.find(x => x.id === selectedCargaId);
+  if(!c) return;
+
+  detailResumo.innerHTML = `
+    <div>Data</div><div>${esc(c.dataDespacho || "—")}</div>
+    <div>Transportadora</div><div>${esc(c.transportadoraNome || "—")}</div>
+    <div>Placa</div><div>${esc(c.placa || "—")}</div>
+    <div>Motorista</div><div>${esc(c.motorista || "—")}</div>
+    <div>Status</div><div><span class="tag ${c.problema==="OK"?"ok":"err"}">${esc(c.problema)}</span></div>
+    <div>Obs</div><div>${esc(c.observacao || "—")}</div>
+    <div>Pedidos</div><div>${Number(c.totalPedidos||0)}</div>
+    <div>Volumes</div><div>${Number(c.totalVolumes||0)}</div>
   `;
 }
 
-// ================================
-// RESUMO
-// ================================
-function atualizarResumo(lista) {
-  totalCargasEl.textContent = lista.length;
-  totalVolumesEl.textContent = lista.reduce((s, c) => s + (Number(c.volumes) || 0), 0);
-  totalPedidosEl.textContent = lista.reduce((s, c) => s + (Number(c.pedidos) || 0), 0);
-}
+// ---------- PEDIDOS ----------
+btnAddPedido.addEventListener("click", async () => {
+  pMsg.textContent = "";
+  if(!selectedCargaId){
+    pMsg.textContent = "Selecione uma carga.";
+    return;
+  }
 
-// ================================
-// SALVAR / EDITAR
-// ================================
-async function handleSubmit(e) {
-  e.preventDefault();
+  const numero = pNumero.value.trim();
+  if(!numero){
+    pMsg.textContent = "Informe o nº do pedido.";
+    return;
+  }
+
+  const volumes = Number(pVolumes.value || 0);
+  if(volumes < 0 || Number.isNaN(volumes)){
+    pMsg.textContent = "Volumes inválido.";
+    return;
+  }
 
   const payload = {
-    numeroCarga: form.numeroCarga.value.trim(),
-    data: form.data.value,
-    transportadora: form.transportadora.value.trim(),
-    rota: form.rota.value.trim(),
-    volumes: form.volumes.value,
-    pedidos: form.pedidos.value,
-    carregador: form.carregador.value.trim(),
-    situacao: form.situacao.value,
-    observacoes: form.observacoes.value.trim(),
-    atualizadoEm: serverTimestamp()
+    numero,
+    cliente: pCliente.value.trim(),
+    volumes,
+    observacao: pObs.value.trim(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   };
 
-  try {
-    if (cargaEmEdicaoId) {
-      await updateDoc(
-        doc(db, "empresas", empresaId, "cargas", cargaEmEdicaoId),
-        payload
-      );
-    } else {
-      await addDoc(collection(db, "empresas", empresaId, "cargas"), {
-        ...payload,
-        empresaId,
-        criadoEm: serverTimestamp(),
-        criadoPor: {
-          uid: currentUser.uid,
-          nome: currentUser.displayName || currentUser.email
-        }
-      });
-    }
-
-    form.reset();
-    form.data.value = new Date().toISOString().slice(0, 10);
-    cargaEmEdicaoId = null;
-    form.querySelector("button[type='submit']").textContent = "Salvar carga";
-    carregarCargas();
-  } catch (err) {
-    console.error(err);
-    alert("Erro ao salvar a carga.");
+  try{
+    await addDoc(colPedidos(selectedCargaId), payload);
+    pNumero.value = ""; pCliente.value = ""; pVolumes.value = ""; pObs.value = "";
+    pMsg.textContent = "Pedido adicionado ✅";
+    await recalcCargaTotals(selectedCargaId);
+    await loadCargas();
+    await renderDashboard();
+    await openCargaDetail(selectedCargaId);
+  }catch(e){
+    pMsg.textContent = "Erro: " + (e?.message || e);
   }
+});
+
+async function loadPedidos(){
+  if(!selectedCargaId) return;
+  const qy = query(colPedidos(selectedCargaId), orderBy("createdAt","desc"), limit(500));
+  const snap = await getDocs(qy);
+  const pedidos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const rows = pedidos.map(p => `
+    <tr>
+      <td><strong>${esc(p.numero)}</strong><div class="muted small">${esc(p.cliente||"")}</div></td>
+      <td>${Number(p.volumes||0)}</td>
+      <td>${esc(p.observacao||"—")}</td>
+      <td>
+        <div class="actions">
+          <button class="btn btnGhost" data-act="editP" data-id="${p.id}">Editar</button>
+          <button class="btn btnDanger" data-act="delP" data-id="${p.id}">Excluir</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+
+  pedidosList.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>Pedido</th><th>Volumes</th><th>Obs</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td colspan="4" class="muted">Nenhum pedido.</td></tr>`}
+      </tbody>
+    </table>
+  `;
+
+  pedidosList.querySelectorAll("button[data-act]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const act = btn.dataset.act;
+      const pid = btn.dataset.id;
+
+      if(act === "delP"){
+        if(!confirm("Excluir pedido?")) return;
+        await deleteDoc(doc(db, "cargas", selectedCargaId, "pedidos", pid));
+        await recalcCargaTotals(selectedCargaId);
+        await loadCargas();
+        await renderDashboard();
+        await openCargaDetail(selectedCargaId);
+      }
+
+      if(act === "editP"){
+        const snapP = await getDoc(doc(db, "cargas", selectedCargaId, "pedidos", pid));
+        if(!snapP.exists()) return;
+        const p = snapP.data();
+
+        const nNumero = prompt("Nº do pedido:", p.numero || "");
+        if(nNumero === null) return;
+        const nCliente = prompt("Cliente:", p.cliente || "");
+        if(nCliente === null) return;
+        const nVolumes = prompt("Volumes:", String(p.volumes ?? 0));
+        if(nVolumes === null) return;
+        const nObs = prompt("Obs:", p.observacao || "");
+        if(nObs === null) return;
+
+        await updateDoc(doc(db, "cargas", selectedCargaId, "pedidos", pid), {
+          numero: nNumero.trim(),
+          cliente: nCliente.trim(),
+          volumes: Number(nVolumes || 0),
+          observacao: nObs.trim(),
+          updatedAt: serverTimestamp()
+        });
+
+        await recalcCargaTotals(selectedCargaId);
+        await loadCargas();
+        await renderDashboard();
+        await openCargaDetail(selectedCargaId);
+      }
+    });
+  });
 }
 
-// ================================
-// EDITAR / EXCLUIR
-// ================================
-function handleListClick(e) {
-  const edit = e.target.closest(".btn-edit");
-  const del = e.target.closest(".btn-delete");
+async function recalcCargaTotals(cargaId){
+  const snap = await getDocs(query(colPedidos(cargaId), limit(1000)));
+  let totalPedidos = 0;
+  let totalVolumes = 0;
 
-  if (edit) {
-    const carga = cargas.find(c => c.id === edit.dataset.id);
-    if (carga) preencherFormularioEdicao(carga);
+  snap.forEach(d => {
+    totalPedidos += 1;
+    totalVolumes += Number(d.data().volumes || 0);
+  });
+
+  await updateDoc(doc(db, "cargas", cargaId), {
+    totalPedidos,
+    totalVolumes,
+    updatedAt: serverTimestamp()
+  });
+}
+
+// ---------- DASHBOARD ----------
+async function renderDashboard(){
+  // KPIs usando cacheCargas
+  const total = cacheCargas.length;
+  const ok = cacheCargas.filter(c => c.problema === "OK").length;
+  const err = cacheCargas.filter(c => c.problema === "ERRO").length;
+
+  kpiTotal.textContent = `Total: ${total}`;
+  kpiOk.textContent = `OK: ${ok}`;
+  kpiErr.textContent = `ERRO: ${err}`;
+
+  // últimas cargas
+  const last = cacheCargas.slice(0, 6);
+  dashLastCargas.innerHTML = last.map(c => `
+    <div class="item">
+      <strong>${esc(c.dataDespacho || "—")} • ${esc(c.transportadoraNome || "")}</strong>
+      <small>${esc(c.placa||"—")} • ${esc(c.motorista||"")}</small>
+      <small><span class="tag ${c.problema==="OK"?"ok":"err"}">${esc(c.problema)}</span> • ${esc(c.observacao||"")}</small>
+    </div>
+  `).join("") || `<div class="muted small">Sem cargas.</div>`;
+
+  // transportadoras
+  dashTransportadoras.innerHTML = cacheTransportadoras.slice(0, 8).map(t => `
+    <div class="item">
+      <strong>${esc(t.nome)}</strong>
+      <small>${esc(t.codigo||"")}</small>
+      <small>${esc(t.contato||"")}</small>
+    </div>
+  `).join("") || `<div class="muted small">Sem transportadoras.</div>`;
+
+  // erros
+  const errs = cacheCargas.filter(c => c.problema === "ERRO").slice(0, 6);
+  dashErros.innerHTML = errs.map(c => `
+    <div class="item">
+      <strong>${esc(c.dataDespacho || "—")} • ${esc(c.transportadoraNome||"")}</strong>
+      <small>${esc(c.observacao || "Sem observação")}</small>
+    </div>
+  `).join("") || `<div class="muted small">Nenhum ERRO 🎉</div>`;
+}
+
+// ---------- RELATÓRIOS ----------
+btnGerarRelatorio.addEventListener("click", async () => {
+  const de = rDe.value;
+  const ate = rAte.value;
+
+  if(!de || !ate){
+    relatorioResumo.textContent = "Informe um período (De/Até).";
+    relatorioTabela.innerHTML = "";
+    btnExportCSV.classList.add("hidden");
+    return;
   }
 
-  if (del && confirm("Excluir esta carga?")) {
-    excluirCarga(del.dataset.id);
-  }
-}
+  const list = cacheCargas.filter(c => (c.dataDespacho || "") >= de && (c.dataDespacho || "") <= ate);
 
-function preencherFormularioEdicao(c) {
-  cargaEmEdicaoId = c.id;
+  const total = list.length;
+  const ok = list.filter(c => c.problema === "OK").length;
+  const err = list.filter(c => c.problema === "ERRO").length;
+  const volumes = list.reduce((acc, c) => acc + Number(c.totalVolumes||0), 0);
+  const pedidos = list.reduce((acc, c) => acc + Number(c.totalPedidos||0), 0);
 
-  form.numeroCarga.value = c.numeroCarga || "";
-  form.data.value = c.data || "";
-  form.transportadora.value = c.transportadora || "";
-  form.rota.value = c.rota || "";
-  form.volumes.value = c.volumes || "";
-  form.pedidos.value = c.pedidos || "";
-  form.carregador.value = c.carregador || "";
-  form.situacao.value = c.situacao || "ok";
-  form.observacoes.value = c.observacoes || "";
+  relatorioResumo.textContent = `Período ${de} até ${ate} • Cargas: ${total} • OK: ${ok} • ERRO: ${err} • Pedidos: ${pedidos} • Volumes: ${volumes}`;
 
-  form.querySelector("button[type='submit']").textContent = "Atualizar carga";
-  form.scrollIntoView({ behavior: "smooth" });
-}
+  const rows = list.map(c => ([
+    c.dataDespacho || "",
+    c.transportadoraNome || "",
+    c.placa || "",
+    c.motorista || "",
+    c.problema || "",
+    c.observacao || "",
+    Number(c.totalPedidos||0),
+    Number(c.totalVolumes||0)
+  ]));
 
-async function excluirCarga(id) {
-  await deleteDoc(doc(db, "empresas", empresaId, "cargas", id));
-  carregarCargas();
-}
+  lastReportRows = rows;
 
-// ================================
-// CONFIGURAÇÕES (LOCAL)
-// ================================
-function carregarConfiguracoes() {
-  const empresa = localStorage.getItem("config_empresa") || "";
-  const cidade = localStorage.getItem("config_cidade") || "";
-  const autoRel = localStorage.getItem("config_auto_relatorio") === "true";
+  const htmlRows = rows.map(r => `
+    <tr>
+      <td>${esc(r[0])}</td>
+      <td>${esc(r[1])}</td>
+      <td>${esc(r[2])}</td>
+      <td>${esc(r[3])}</td>
+      <td><span class="tag ${r[4]==="OK"?"ok":"err"}">${esc(r[4])}</span></td>
+      <td>${esc(r[5])}</td>
+      <td>${esc(r[6])}</td>
+      <td>${esc(r[7])}</td>
+    </tr>
+  `).join("");
 
-  document.getElementById("config-empresa").value = empresa;
-  document.getElementById("config-cidade").value = cidade;
-  document.getElementById("config-auto-relatorio").checked = autoRel;
+  relatorioTabela.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th><th>Transportadora</th><th>Placa</th><th>Motorista</th>
+          <th>Status</th><th>Obs</th><th>Pedidos</th><th>Volumes</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${htmlRows || `<tr><td colspan="8" class="muted">Sem dados no período.</td></tr>`}
+      </tbody>
+    </table>
+  `;
 
-  if (currentUser) {
-    document.getElementById("config-usuario").textContent =
-      currentUser.displayName || "Usuário";
-    document.getElementById("config-email").textContent = currentUser.email;
-  }
-}
+  btnExportCSV.classList.toggle("hidden", rows.length === 0);
+});
 
-// ================================
-// UTILIDADES
-// ================================
-function formatarData(iso) {
-  if (!iso) return "-";
-  const [a, m, d] = iso.split("-");
-  return `${d}/${m}/${a}`;
-}
+btnExportCSV.addEventListener("click", () => {
+  const header = [["Data","Transportadora","Placa","Motorista","Status","Obs","Pedidos","Volumes"]];
+  const csv = toCSV(header.concat(lastReportRows));
+  downloadText(`relatorio-cargas.csv`, csv, "text/csv;charset=utf-8");
+});
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+// ---------- DEFAULTS ----------
+(function initDefaults(){
+  yearEl.textContent = new Date().getFullYear();
+  rDe.value = todayISO();
+  rAte.value = todayISO();
+})();

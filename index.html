@@ -1,370 +1,399 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<!doctype html>
+<html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <title>Diário de Cargas</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Logística • Gestão de Despacho</title>
   <link rel="stylesheet" href="styles.css" />
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#1e40af">
 </head>
-
-<body class="app-page">
-
-  <!-- SPLASH SCREEN -->
-  <div id="splash-screen">
-    <img src="imagem_logistica.png" alt="Logo" />
-  </div>
-
-  <div class="app-shell">
-
-    <!-- HEADER -->
-    <header class="app-header">
-
-      <div class="app-header__left">
-        <img src="imagem_logistica.png" alt="Logo" class="header-logo">
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">LG</div>
+      <div class="brandText">
+        <strong>Gestão de Logística</strong>
+        <small>Despacho • Cargas • Pedidos • Volumes</small>
       </div>
+    </div>
 
-      <div class="app-header__right">
-        <div class="user-pill">
-          <span class="user-avatar">👤</span>
-          <span id="usuario-nome" class="user-name">Carregando...</span>
+    <div class="topActions">
+      <div id="userBadge" class="badge hidden"></div>
+      <button id="btnLogout" class="btn btnGhost hidden">Sair</button>
+    </div>
+  </header>
+
+  <!-- AUTH -->
+  <main id="authView" class="container">
+    <section class="card authCard">
+      <h1>Entrar</h1>
+      <p class="muted">Faça login para acessar o sistema.</p>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Email</label>
+          <input id="loginEmail" type="email" placeholder="seuemail@exemplo.com" autocomplete="email" />
         </div>
-        <button id="logout-header" class="btn-ghost btn-sm">Sair</button>
-        <button id="mobile-menu-btn" class="mobile-menu-btn">☰</button>
+        <div class="field">
+          <label>Senha</label>
+          <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
       </div>
 
-      <!-- MENU -->
-      <nav class="app-nav" id="app-nav">
-        <button class="nav-btn nav-active" data-screen="cargas">Cargas</button>
-        <button class="nav-btn" data-screen="operacoes">Operações</button>
-        <button class="nav-btn" data-screen="relatorios">Relatórios</button>
-        <button class="nav-btn" data-screen="config">Config</button>
-      </nav>
+      <div class="row">
+        <button id="btnLogin" class="btn">Entrar</button>
+        <button id="btnRegister" class="btn btnOutline">Criar conta</button>
+      </div>
 
-    </header>
+      <div class="hint">
+        <span id="authMsg" class="muted"></span>
+      </div>
+    </section>
+  </main>
 
-    <!-- MAIN -->
-    <main class="app-main">
+  <!-- APP -->
+  <main id="appView" class="container hidden">
+    <div class="layout">
+      <!-- Sidebar -->
+      <aside class="sidebar card">
+        <h2>Navegação</h2>
+        <nav class="nav">
+          <button class="navItem active" data-tab="dashboard">Dashboard</button>
+          <button class="navItem" data-tab="transportadoras">Transportadoras</button>
+          <button class="navItem" data-tab="cargas">Cargas</button>
+          <button class="navItem" data-tab="relatorios">Relatórios</button>
+          <button class="navItem" data-tab="config">Config</button>
+        </nav>
 
-      <!-- =========================
-           TELA: CARGAS
-      ========================== -->
-      <section class="screen screen-active" id="screen-cargas">
-        <section class="app-grid">
+        <div class="sideFooter">
+          <div class="small muted">
+            Dica: use “OK/ERRO” nas cargas para controle rápido.
+          </div>
+        </div>
+      </aside>
 
-          <section class="card form-card">
-            <div class="card-header">
-              <h2>Cadastrar carga</h2>
-              <p class="card-caption">Preencha os dados da carga para registrar.</p>
+      <!-- Content -->
+      <section class="content">
+        <!-- DASHBOARD -->
+        <section id="tab-dashboard" class="card tab">
+          <div class="tabHeader">
+            <div>
+              <h1>Dashboard</h1>
+              <p class="muted">Visão geral do despacho e status das cargas.</p>
+            </div>
+            <div class="pillRow">
+              <span class="pill" id="kpiTotal">Total: 0</span>
+              <span class="pill ok" id="kpiOk">OK: 0</span>
+              <span class="pill err" id="kpiErr">ERRO: 0</span>
+            </div>
+          </div>
+
+          <div class="grid3">
+            <div class="mini card">
+              <h3>Últimas cargas</h3>
+              <div id="dashLastCargas" class="list"></div>
             </div>
 
-            <form id="carga-form" class="form-grid">
+            <div class="mini card">
+              <h3>Transportadoras</h3>
+              <div id="dashTransportadoras" class="list"></div>
+            </div>
 
-              <div class="form-group">
-                <label for="data">Data *</label>
-                <input type="date" id="data" name="data" required />
+            <div class="mini card">
+              <h3>Alertas (ERRO)</h3>
+              <div id="dashErros" class="list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TRANSPORTADORAS -->
+        <section id="tab-transportadoras" class="card tab hidden">
+          <div class="tabHeader">
+            <div>
+              <h1>Transportadoras</h1>
+              <p class="muted">Cadastre e gerencie transportadoras.</p>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="card inner">
+              <h3>Nova transportadora</h3>
+              <div class="field">
+                <label>Nome</label>
+                <input id="tNome" placeholder="Ex: MV Transportes" />
+              </div>
+              <div class="field">
+                <label>Código (opcional)</label>
+                <input id="tCodigo" placeholder="Ex: MV-003" />
+              </div>
+              <div class="field">
+                <label>Contato (opcional)</label>
+                <input id="tContato" placeholder="Telefone / WhatsApp / Email" />
+              </div>
+              <button id="btnAddTransportadora" class="btn">Salvar</button>
+              <div id="tMsg" class="muted small mt8"></div>
+            </div>
+
+            <div class="card inner">
+              <div class="rowBetween">
+                <h3>Lista</h3>
+                <input id="tSearch" class="search" placeholder="Buscar..." />
+              </div>
+              <div id="transportadorasList" class="tableWrap"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CARGAS -->
+        <section id="tab-cargas" class="card tab hidden">
+          <div class="tabHeader">
+            <div>
+              <h1>Cargas</h1>
+              <p class="muted">Crie cargas, vincule pedidos e controle volumes e problemas.</p>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="card inner">
+              <h3>Nova carga</h3>
+
+              <div class="grid2">
+                <div class="field">
+                  <label>Transportadora</label>
+                  <select id="cTransportadora"></select>
+                </div>
+
+                <div class="field">
+                  <label>Data do despacho</label>
+                  <input id="cData" type="date" />
+                </div>
               </div>
 
-              <div class="form-group">
-                <label for="numeroCarga">Nº da carga *</label>
-                <input type="text" id="numeroCarga" name="numeroCarga" required />
+              <div class="grid2">
+                <div class="field">
+                  <label>Placa (opcional)</label>
+                  <input id="cPlaca" placeholder="ABC-1D23" />
+                </div>
+                <div class="field">
+                  <label>Motorista (opcional)</label>
+                  <input id="cMotorista" placeholder="Nome do motorista" />
+                </div>
               </div>
 
-              <div class="form-group">
-                <label for="transportadora">Transportadora *</label>
-                <input type="text" id="transportadora" name="transportadora" required />
+              <div class="grid2">
+                <div class="field">
+                  <label>Status do problema</label>
+                  <select id="cProblema">
+                    <option value="OK">OK</option>
+                    <option value="ERRO">ERRO</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Observação (se ERRO, explique)</label>
+                  <input id="cObs" placeholder="Ex: Avaria / divergência / falta volume..." />
+                </div>
               </div>
 
-              <div class="form-group">
-                <label for="rota">Rota</label>
-                <input type="text" id="rota" name="rota" />
+              <button id="btnAddCarga" class="btn">Criar carga</button>
+              <div id="cMsg" class="muted small mt8"></div>
+            </div>
+
+            <div class="card inner">
+              <div class="rowBetween">
+                <h3>Pesquisar/filtrar</h3>
+                <button id="btnRefreshCargas" class="btn btnGhost">Atualizar</button>
               </div>
 
-              <div class="form-group">
-                <label for="volumes">Volumes</label>
-                <input type="number" id="volumes" name="volumes" min="0" />
+              <div class="grid3">
+                <div class="field">
+                  <label>Status</label>
+                  <select id="fStatus">
+                    <option value="TODOS">Todos</option>
+                    <option value="OK">OK</option>
+                    <option value="ERRO">ERRO</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Transportadora</label>
+                  <select id="fTransportadora"></select>
+                </div>
+                <div class="field">
+                  <label>Busca</label>
+                  <input id="fBusca" placeholder="Placa, motorista, obs..." />
+                </div>
               </div>
 
-              <div class="form-group">
-                <label for="pedidos">Pedidos</label>
-                <input type="number" id="pedidos" name="pedidos" min="0" />
+              <div id="cargasList" class="tableWrap mt8"></div>
+            </div>
+          </div>
+
+          <div class="card inner mt16">
+            <div class="rowBetween">
+              <div>
+                <h3>Detalhes da carga</h3>
+                <div class="muted small">Selecione uma carga na lista acima para editar pedidos/volumes.</div>
               </div>
-
-              <div class="form-group">
-                <label for="carregador">Carregado por</label>
-                <input type="text" id="carregador" name="carregador" />
+              <div class="row">
+                <button id="btnCloseDetail" class="btn btnOutline">Fechar</button>
+                <button id="btnDeleteCarga" class="btn btnDanger hidden">Excluir carga</button>
               </div>
+            </div>
 
-              <div class="form-group">
-                <label for="situacao">Situação</label>
-                <select id="situacao" name="situacao">
-                  <option value="ok">OK</option>
-                  <option value="problema">Problema</option>
-                </select>
+            <div id="cargaDetail" class="hidden">
+              <div class="detailGrid">
+                <div class="card inner">
+                  <h4>Resumo</h4>
+                  <div id="detailResumo" class="kv"></div>
+
+                  <div class="row mt8">
+                    <button id="btnToggleProblema" class="btn btnGhost">Alternar OK/ERRO</button>
+                    <button id="btnEditObs" class="btn btnGhost">Editar observação</button>
+                  </div>
+                </div>
+
+                <div class="card inner">
+                  <h4>Novo pedido</h4>
+                  <div class="grid2">
+                    <div class="field">
+                      <label>Nº do pedido</label>
+                      <input id="pNumero" placeholder="Ex: 154987" />
+                    </div>
+                    <div class="field">
+                      <label>Cliente (opcional)</label>
+                      <input id="pCliente" placeholder="Ex: Mercado X" />
+                    </div>
+                  </div>
+                  <div class="grid2">
+                    <div class="field">
+                      <label>Volumes</label>
+                      <input id="pVolumes" type="number" min="0" placeholder="0" />
+                    </div>
+                    <div class="field">
+                      <label>Observação (opcional)</label>
+                      <input id="pObs" placeholder="Ex: frágil / prioridade" />
+                    </div>
+                  </div>
+                  <button id="btnAddPedido" class="btn">Adicionar pedido</button>
+                  <div id="pMsg" class="muted small mt8"></div>
+                </div>
+
+                <div class="card inner">
+                  <h4>Pedidos na carga</h4>
+                  <div id="pedidosList" class="tableWrap"></div>
+                </div>
               </div>
+            </div>
 
-              <div class="form-group form-group--full">
-                <label for="observacoes">Observações</label>
-                <textarea id="observacoes" name="observacoes" rows="3"></textarea>
-              </div>
+            <div id="detailEmpty" class="empty">
+              Nenhuma carga selecionada.
+            </div>
+          </div>
+        </section>
 
-              <div class="form-actions">
-                <button type="submit" class="btn-primary">Salvar carga</button>
-              </div>
+        <!-- RELATORIOS -->
+        <section id="tab-relatorios" class="card tab hidden">
+          <div class="tabHeader">
+            <div>
+              <h1>Relatórios</h1>
+              <p class="muted">Exportação simples e contagens por período.</p>
+            </div>
+          </div>
 
-            </form>
-          </section>
+          <div class="grid3">
+            <div class="field">
+              <label>De</label>
+              <input id="rDe" type="date" />
+            </div>
+            <div class="field">
+              <label>Até</label>
+              <input id="rAte" type="date" />
+            </div>
+            <div class="field">
+              <label>Ação</label>
+              <button id="btnGerarRelatorio" class="btn w100">Gerar</button>
+            </div>
+          </div>
 
+          <div class="card inner mt16">
+            <div class="rowBetween">
+              <h3>Resultado</h3>
+              <button id="btnExportCSV" class="btn btnOutline hidden">Exportar CSV</button>
+            </div>
+            <div id="relatorioResumo" class="muted small mt8"></div>
+            <div id="relatorioTabela" class="tableWrap mt8"></div>
+          </div>
+        </section>
+
+        <!-- CONFIG -->
+        <section id="tab-config" class="card tab hidden">
+          <div class="tabHeader">
+            <div>
+              <h1>Config</h1>
+              <p class="muted">Coleções e regras (referência rápida).</p>
+            </div>
+          </div>
+
+          <div class="card inner">
+            <h3>Modelo de dados (Firestore)</h3>
+            <pre class="codeBlock">transportadoras (collection)
+  - nome (string)
+  - codigo (string)
+  - contato (string)
+  - createdAt (timestamp)
+  - updatedAt (timestamp)
+
+cargas (collection)
+  - transportadoraId (string)
+  - transportadoraNome (string) // denormalizado
+  - dataDespacho (string YYYY-MM-DD)
+  - placa (string)
+  - motorista (string)
+  - problema (string: "OK" | "ERRO")
+  - observacao (string)
+  - totalPedidos (number)
+  - totalVolumes (number)
+  - createdAt (timestamp)
+  - updatedAt (timestamp)
+
+cargas/{cargaId}/pedidos (subcollection)
+  - numero (string)
+  - cliente (string)
+  - volumes (number)
+  - observacao (string)
+  - createdAt (timestamp)
+  - updatedAt (timestamp)</pre>
+          </div>
+
+          <div class="card inner mt16">
+            <h3>Regras sugeridas (Security Rules)</h3>
+            <p class="muted small">Cole no Firebase Console &gt; Firestore Rules.</p>
+            <pre class="codeBlock">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    match /transportadoras/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /cargas/{cargaId} {
+      allow read, write: if signedIn();
+
+      match /pedidos/{pedidoId} {
+        allow read, write: if signedIn();
+      }
+    }
+  }
+}</pre>
+          </div>
         </section>
       </section>
-
-      <!-- =========================
-           TELA: OPERAÇÕES
-      ========================== -->
-      <section class="screen" id="screen-operacoes">
-
-        <section class="card filters-card">
-          <div class="card-header">
-            <h2>Filtros & Resumo</h2>
-            <p class="card-caption">Filtre as cargas e acompanhe o total.</p>
-          </div>
-
-          <div class="filters-grid">
-            <div class="form-group">
-              <label for="filtro-data">Filtrar por data</label>
-              <input type="date" id="filtro-data" />
-            </div>
-
-            <div class="form-group">
-              <label for="filtro-busca">Busca geral</label>
-              <input type="text" id="filtro-busca" />
-            </div>
-
-            <div class="filters-actions">
-              <button id="btn-limpar-filtros" class="btn-ghost btn-sm">Limpar filtros</button>
-              <button id="btn-exportar" class="btn-outline btn-sm">Exportar PDF</button>
-            </div>
-          </div>
-
-          <div class="summary-grid">
-            <div class="summary-item">
-              <span class="summary-label">Cargas</span>
-              <span id="total-cargas">0</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Volumes</span>
-              <span id="total-volumes">0</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Pedidos</span>
-              <span id="total-pedidos">0</span>
-            </div>
-          </div>
-        </section>
-
-        <section class="card list-card">
-          <div class="card-header">
-            <h2>Cargas registradas</h2>
-            <p class="card-caption">As cargas mais recentes aparecem primeiro.</p>
-          </div>
-          <div id="cargas-list" class="cargas-list"></div>
-        </section>
-
-      </section>
-
-      <!-- =========================
-           TELA: RELATÓRIOS
-      ========================== -->
-      <section class="screen" id="screen-relatorios">
-
-        <!-- FILTROS -->
-        <section class="card filters-card">
-          <div class="card-header">
-            <h2>Relatórios</h2>
-            <p class="card-caption">Análise e consolidação das cargas.</p>
-          </div>
-
-          <div class="filters-grid">
-            <div class="form-group">
-              <label for="relatorio-inicio">Data inicial</label>
-              <input type="date" id="relatorio-inicio">
-            </div>
-
-            <div class="form-group">
-              <label for="relatorio-fim">Data final</label>
-              <input type="date" id="relatorio-fim">
-            </div>
-
-            <div class="filters-actions">
-              <button id="btn-gerar-relatorio" class="btn-primary btn-sm">
-                Gerar relatório
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <!-- KPIs -->
-        <section class="card">
-          <div class="summary-grid">
-
-            <div class="summary-item">
-              <span class="summary-label">Total de cargas</span>
-              <span id="kpi-total-cargas" class="summary-value">0</span>
-            </div>
-
-            <div class="summary-item">
-              <span class="summary-label">Volumes médios / carga</span>
-              <span id="kpi-media-volumes" class="summary-value">0</span>
-            </div>
-
-            <div class="summary-item">
-              <span class="summary-label">Cargas com problema</span>
-              <span id="kpi-problemas" class="summary-value">0</span>
-            </div>
-
-            <div class="summary-item">
-              <span class="summary-label">Transportadora líder</span>
-              <span id="kpi-top-transportadora" class="summary-value">-</span>
-            </div>
-
-          </div>
-        </section>
-
-        <!-- RANKING -->
-        <section class="card">
-          <div class="card-header">
-            <h3>Ranking de Transportadoras</h3>
-            <p class="card-caption">Quantidade de cargas no período selecionado.</p>
-          </div>
-
-          <div id="ranking-transportadoras" class="ranking-list"></div>
-        </section>
-
-        <!-- RESUMO -->
-        <section class="card">
-          <div class="summary-grid">
-            <div class="summary-item">
-              <span class="summary-label">Cargas</span>
-              <span id="rel-total-cargas">0</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Volumes</span>
-              <span id="rel-total-volumes">0</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Pedidos</span>
-              <span id="rel-total-pedidos">0</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- GRÁFICOS -->
-        <section class="card">
-          <h3>Cargas por dia</h3>
-          <canvas id="grafico-cargas-dia" height="120"></canvas>
-        </section>
-
-        <section class="card">
-          <h3>Volumes x Pedidos</h3>
-          <canvas id="grafico-volumes-pedidos" height="120"></canvas>
-        </section>
-
-      </section>
-
-      <!-- =========================
-     TELA: CONFIGURAÇÕES
-========================== -->
-<section class="screen" id="screen-config">
-
-  <!-- DADOS DA EMPRESA -->
-  <section class="card">
-    <div class="card-header">
-      <h2>Configurações</h2>
-      <p class="card-caption">Informações gerais do sistema</p>
     </div>
+  </main>
 
-    <div class="form-grid">
-      <div class="form-group">
-        <label for="config-empresa">Nome da empresa</label>
-        <input type="text" id="config-empresa" placeholder="Ex: Transportadora XYZ">
-      </div>
+  <footer class="footer">
+    <small class="muted">© <span id="year"></span> • Sistema de Gestão de Logística</small>
+  </footer>
 
-      <div class="form-group">
-        <label for="config-cidade">Cidade</label>
-        <input type="text" id="config-cidade" placeholder="Ex: São Paulo - SP">
-      </div>
-    </div>
-
-    <div class="form-actions">
-      <button id="btn-salvar-config" class="btn-primary btn-sm">
-        Salvar configurações
-      </button>
-    </div>
-  </section>
-
-  <!-- USUÁRIO -->
-  <section class="card">
-    <div class="card-header">
-      <h3>Usuário</h3>
-    </div>
-
-    <div class="summary-grid">
-      <div class="summary-item">
-        <span class="summary-label">Usuário logado</span>
-        <span id="config-usuario" class="summary-value">-</span>
-      </div>
-
-      <div class="summary-item">
-        <span class="summary-label">E-mail</span>
-        <span id="config-email" class="summary-value">-</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- SISTEMA -->
-  <section class="card">
-    <div class="card-header">
-      <h3>Sistema</h3>
-    </div>
-
-    <div class="form-grid">
-      <div class="form-group">
-        <label>
-          <input type="checkbox" id="config-auto-relatorio">
-          Gerar relatório automaticamente ao abrir a tela
-        </label>
-      </div>
-    </div>
-  </section>
-
-  <!-- AÇÕES -->
-  <section class="card">
-    <div class="card-header">
-      <h3>Ações</h3>
-    </div>
-
-    <div class="form-actions">
-      <button id="btn-limpar-dados" class="btn-outline btn-sm">
-        Limpar dados locais
-      </button>
-
-      <button id="btn-logout-config" class="btn-ghost btn-sm">
-        Sair do sistema
-      </button>
-    </div>
-  </section>
-
-</section>
-
-
-    </main>
-  </div>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- App -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
