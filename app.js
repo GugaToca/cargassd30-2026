@@ -56,12 +56,41 @@ onAuthStateChanged(auth, async (user) => {
 
   currentUser = user;
 
-  const snap = await getDoc(doc(db, "users", user.uid));
-  empresaId = snap.data().empresaId;
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  // 🔁 USUÁRIOS ANTIGOS (migração automática)
+  if (!snap.exists() || !snap.data().empresaId) {
+    const empresaRef = await addDoc(collection(db, "empresas"), {
+      nome: "Minha Empresa",
+      cidade: "",
+      criadoEm: serverTimestamp()
+    });
+
+    await setDoc(userRef, {
+      nome: user.displayName || "",
+      email: user.email,
+      empresaId: empresaRef.id,
+      role: "admin",
+      criadoEm: serverTimestamp()
+    });
+
+    await setDoc(doc(db, "empresas", empresaRef.id, "usuarios", user.uid), {
+      nome: user.displayName || "",
+      email: user.email,
+      role: "admin",
+      criadoEm: serverTimestamp()
+    });
+
+    empresaId = empresaRef.id;
+  } else {
+    empresaId = snap.data().empresaId;
+  }
 
   usuarioNomeEl.textContent = user.displayName || user.email;
   init();
 });
+
 
 // ================================
 // INIT
