@@ -1,10 +1,11 @@
 // ================================
-// app.js — NOVA SD LOGÍSTICA
+// app.js — NOVA SD LOGÍSTICA 2.0
 // ================================
 
 let chartCargasDia = null;
 let chartVolumesPedidos = null;
 
+import { getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
@@ -25,6 +26,7 @@ import { logout } from "./auth.js";
 // ESTADO GLOBAL
 // ================================
 let currentUser = null;
+let empresaId = null;
 let cargas = [];
 let cargaEmEdicaoId = null;
 
@@ -46,13 +48,17 @@ const usuarioNomeEl = document.getElementById("usuario-nome");
 // ================================
 // AUTENTICAÇÃO
 // ================================
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "login.html";
     return;
   }
 
   currentUser = user;
+
+  const snap = await getDoc(doc(db, "users", user.uid));
+  empresaId = snap.data().empresaId;
+
   usuarioNomeEl.textContent = user.displayName || user.email;
   init();
 });
@@ -80,13 +86,13 @@ function init() {
 }
 
 // ================================
-// FIRESTORE — CARGAS (GLOBAL)
+// FIRESTORE — CARGAS POR EMPRESA
 // ================================
 async function carregarCargas() {
   listEl.innerHTML = `<p class="info-text">Carregando cargas...</p>`;
 
   try {
-    const ref = collection(db, "cargas");
+    const ref = collection(db, "empresas", empresaId, "cargas");
     const q = query(ref, orderBy("data", "desc"), orderBy("numeroCarga", "desc"));
     const snap = await getDocs(q);
 
@@ -209,10 +215,14 @@ async function handleSubmit(e) {
 
   try {
     if (cargaEmEdicaoId) {
-      await updateDoc(doc(db, "cargas", cargaEmEdicaoId), payload);
+      await updateDoc(
+        doc(db, "empresas", empresaId, "cargas", cargaEmEdicaoId),
+        payload
+      );
     } else {
-      await addDoc(collection(db, "cargas"), {
+      await addDoc(collection(db, "empresas", empresaId, "cargas"), {
         ...payload,
+        empresaId,
         criadoEm: serverTimestamp(),
         criadoPor: {
           uid: currentUser.uid,
@@ -267,7 +277,7 @@ function preencherFormularioEdicao(c) {
 }
 
 async function excluirCarga(id) {
-  await deleteDoc(doc(db, "cargas", id));
+  await deleteDoc(doc(db, "empresas", empresaId, "cargas", id));
   carregarCargas();
 }
 
@@ -307,52 +317,3 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-
-window.addEventListener("load", () => {
-  const splash = document.getElementById("splash-screen");
-
-  if (splash) {
-    setTimeout(() => {
-      splash.classList.add("hide");
-    }, 600);
-  }
-});
-
-// ================================
-// MENU MOBILE
-// ================================
-const mobileMenuBtn = document.getElementById("mobile-menu-btn");
-const appNav = document.getElementById("app-nav");
-
-if (mobileMenuBtn && appNav) {
-  mobileMenuBtn.addEventListener("click", () => {
-    appNav.classList.toggle("open");
-  });
-}
-
-// ================================
-// NAVEGAÇÃO ENTRE TELAS
-// ================================
-const navButtons = document.querySelectorAll(".nav-btn");
-const screens = document.querySelectorAll(".screen");
-
-navButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.screen;
-
-    // remove estado ativo
-    navButtons.forEach(b => b.classList.remove("nav-active"));
-    screens.forEach(s => s.classList.remove("screen-active"));
-
-    // ativa botão e tela corretos
-    btn.classList.add("nav-active");
-    const screen = document.getElementById(`screen-${target}`);
-    if (screen) {
-      screen.classList.add("screen-active");
-    }
-
-    // fecha menu mobile após clique
-    const appNav = document.getElementById("app-nav");
-    if (appNav) appNav.classList.remove("open");
-  });
-});

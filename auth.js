@@ -1,4 +1,5 @@
-// auth.js
+// auth.js — NOVA SD LOGÍSTICA 2.0
+
 import { auth, db } from "./firebase-config.js";
 import {
   createUserWithEmailAndPassword,
@@ -11,10 +12,14 @@ import {
 import {
   doc,
   setDoc,
-  serverTimestamp
+  serverTimestamp,
+  collection,
+  addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-// Redireciona usuário logado para o dashboard se estiver em login/cadastro
+// ================================
+// REDIRECIONAMENTO AUTOMÁTICO
+// ================================
 onAuthStateChanged(auth, (user) => {
   const path = window.location.pathname;
   const isAuthPage = path.includes("login") || path.includes("cadastro");
@@ -24,10 +29,15 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
+// ================================
+// LOGIN / CADASTRO
+// ================================
 document.addEventListener("DOMContentLoaded", () => {
+
   const loginForm = document.getElementById("login-form");
   const registerForm = document.getElementById("register-form");
 
+  // ---------------- LOGIN ----------------
   if (loginForm) {
     const errorEl = document.getElementById("login-error");
 
@@ -47,16 +57,12 @@ document.addEventListener("DOMContentLoaded", () => {
         await signInWithEmailAndPassword(auth, email, senha);
         window.location.href = "index.html";
       } catch (err) {
-        console.error(err);
-        let msg = "Não foi possível fazer login.";
-        if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found") {
-          msg = "E-mail ou senha inválidos.";
-        }
-        errorEl.textContent = msg;
+        errorEl.textContent = "E-mail ou senha inválidos.";
       }
     });
   }
 
+  // ---------------- CADASTRO ----------------
   if (registerForm) {
     const errorEl = document.getElementById("register-error");
 
@@ -64,12 +70,14 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       errorEl.textContent = "";
 
+      const empresa = registerForm.empresa.value.trim();
+      const cidade = registerForm.cidade.value.trim();
       const nome = registerForm.nome.value.trim();
       const email = registerForm.email.value.trim();
       const senha = registerForm.senha.value.trim();
       const confirmar = registerForm.confirmar.value.trim();
 
-      if (!nome || !email || !senha || !confirmar) {
+      if (!empresa || !cidade || !nome || !email || !senha || !confirmar) {
         errorEl.textContent = "Preencha todos os campos.";
         return;
       }
@@ -80,32 +88,47 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
+        // 1. Cria usuário
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
-
-        // Atualiza o displayName do usuário
         await updateProfile(cred.user, { displayName: nome });
 
-        // Cria documento do usuário
+        // 2. Cria empresa
+        const empresaRef = await addDoc(collection(db, "empresas"), {
+          nome: empresa,
+          cidade,
+          criadoEm: serverTimestamp()
+        });
+
+        // 3. Cria vínculo do usuário
         await setDoc(doc(db, "users", cred.user.uid), {
           nome,
           email,
+          empresaId: empresaRef.id,
+          role: "admin",
+          criadoEm: serverTimestamp()
+        });
+
+        // 4. Registra usuário dentro da empresa
+        await setDoc(doc(db, "empresas", empresaRef.id, "usuarios", cred.user.uid), {
+          nome,
+          email,
+          role: "admin",
           criadoEm: serverTimestamp()
         });
 
         window.location.href = "index.html";
+
       } catch (err) {
         console.error(err);
-        let msg = "Erro ao criar conta.";
-        if (err.code === "auth/email-already-in-use") {
-          msg = "Esse e-mail já está em uso.";
-        }
-        errorEl.textContent = msg;
+        errorEl.textContent = "Erro ao criar empresa.";
       }
     });
   }
 });
 
-// Função de logout usada no dashboard
+// ================================
+// LOGOUT
+// ================================
 export async function logout() {
   await signOut(auth);
   window.location.href = "login.html";
