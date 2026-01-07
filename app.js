@@ -22,6 +22,12 @@ import {
 
 import { logout } from "./auth.js";
 
+const splashEl = document.getElementById("splash-screen");
+function hideSplash() {
+  splashEl?.classList.add("hide");
+}
+
+
 // ================================
 // ESTADO GLOBAL
 // ================================
@@ -49,47 +55,55 @@ const usuarioNomeEl = document.getElementById("usuario-nome");
 // AUTENTICAÇÃO
 // ================================
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = "login.html";
-    return;
+  try {
+    if (!user) {
+      hideSplash();
+      window.location.href = "login.html";
+      return;
+    }
+
+    currentUser = user;
+
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+
+    if (!snap.exists() || !snap.data()?.empresaId) {
+      const empresaRef = await addDoc(collection(db, "empresas"), {
+        nome: "Minha Empresa",
+        cidade: "",
+        criadoEm: serverTimestamp()
+      });
+
+      await setDoc(userRef, {
+        nome: user.displayName || "",
+        email: user.email,
+        empresaId: empresaRef.id,
+        role: "admin",
+        criadoEm: serverTimestamp()
+      });
+
+      await setDoc(doc(db, "empresas", empresaRef.id, "usuarios", user.uid), {
+        nome: user.displayName || "",
+        email: user.email,
+        role: "admin",
+        criadoEm: serverTimestamp()
+      });
+
+      empresaId = empresaRef.id;
+    } else {
+      empresaId = snap.data().empresaId;
+    }
+
+    usuarioNomeEl.textContent = user.displayName || user.email;
+    init();
+    hideSplash();
+  } catch (err) {
+    console.error("Erro crítico:", err);
+    hideSplash();
+    alert("Erro ao inicializar o sistema.");
   }
-
-  currentUser = user;
-
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
-
-  // 🔁 USUÁRIOS ANTIGOS (migração automática)
-  if (!snap.exists() || !snap.data().empresaId) {
-    const empresaRef = await addDoc(collection(db, "empresas"), {
-      nome: "Minha Empresa",
-      cidade: "",
-      criadoEm: serverTimestamp()
-    });
-
-    await setDoc(userRef, {
-      nome: user.displayName || "",
-      email: user.email,
-      empresaId: empresaRef.id,
-      role: "admin",
-      criadoEm: serverTimestamp()
-    });
-
-    await setDoc(doc(db, "empresas", empresaRef.id, "usuarios", user.uid), {
-      nome: user.displayName || "",
-      email: user.email,
-      role: "admin",
-      criadoEm: serverTimestamp()
-    });
-
-    empresaId = empresaRef.id;
-  } else {
-    empresaId = snap.data().empresaId;
-  }
-
-  usuarioNomeEl.textContent = user.displayName || user.email;
-  init();
 });
+
 
 
 // ================================
