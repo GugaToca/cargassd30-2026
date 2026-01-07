@@ -112,6 +112,9 @@ function init() {
 
   carregarConfiguracoes();
   carregarCargas();
+
+    // 👇 ESCONDE SPLASH SCREEN
+  document.getElementById("splash-screen")?.classList.add("hide");
 }
 
 // ================================
