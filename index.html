@@ -229,6 +229,12 @@
 
               <div class="gridAuto2">
                 <div class="field">
+                  <label>Carga</label>
+                  <input id="cPlaca" placeholder="ABC-1D23" />
+                </div>
+
+              <div class="gridAuto2">
+                <div class="field">
                   <label>Transportadora</label>
                   <select id="cTransportadora"></select>
                 </div>
@@ -238,11 +244,18 @@
                 </div>
               </div>
 
-              <div class="gridAuto2">
-                <div class="field">
-                  <label>Placa (opcional)</label>
-                  <input id="cPlaca" placeholder="ABC-1D23" />
-                </div>
+<div class="gridAuto2">
+  <div class="field">
+    <label>Pedidos (inicial)</label>
+    <input id="cPedidos" type="number" min="0" value="0" placeholder="0" />
+  </div>
+  <div class="field">
+    <label>Volumes (inicial)</label>
+    <input id="cVolumes" type="number" min="0" value="0" placeholder="0" />
+  </div>
+</div>
+
+
                 <div class="field">
                   <label>Motorista (opcional)</label>
                   <input id="cMotorista" placeholder="Nome do motorista" />

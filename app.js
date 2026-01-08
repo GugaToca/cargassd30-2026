@@ -94,6 +94,8 @@ const cTransportadora = $("#cTransportadora");
 const cData = $("#cData");
 const cPlaca = $("#cPlaca");
 const cMotorista = $("#cMotorista");
+const cPedidos = $("#cPedidos");
+const cVolumes = $("#cVolumes");
 const cProblema = $("#cProblema");
 const cObs = $("#cObs");
 const btnAddCarga = $("#btnAddCarga");
@@ -698,12 +700,24 @@ async function loadPedidos(){
 async function recalcCargaTotals(cargaId){
   const snap = await getDocs(query(colPedidos(cargaId), limit(1000)));
   let totalPedidos = 0;
-  let totalVolumes = 0;
+let totalVolumes = 0;
 
-  snap.forEach(d => {
-    totalPedidos += 1;
-    totalVolumes += Number(d.data().volumes || 0);
-  });
+snap.forEach(d => {
+  totalPedidos++;
+  totalVolumes += Number(d.data().volumes || 0);
+});
+
+// se ainda não houver pedidos cadastrados,
+// mantém o previsto como total real
+if (totalPedidos === 0) {
+  const cargaDoc = await getDoc(doc(db, "cargas", cargaId));
+  if (cargaDoc.exists()) {
+    const c = cargaDoc.data();
+    totalPedidos = Number(c.pedidosPrevistos || 0);
+    totalVolumes = Number(c.volumesPrevistos || 0);
+  }
+}
+
 
   await updateDoc(doc(db, "cargas", cargaId), {
     totalPedidos,
