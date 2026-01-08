@@ -394,54 +394,93 @@ function renderCargasTable(){
   const filtered = cacheCargas.filter(c => {
     if(st !== "TODOS" && c.problema !== st) return false;
     if(tr !== "TODAS" && c.transportadoraId !== tr) return false;
+
     if(term){
-      const blob = `${c.placa||""} ${c.motorista||""} ${c.observacao||""} ${c.transportadoraNome||""}`.toLowerCase();
+      const blob = `${c.placa||""} ${c.motorista||""} ${c.observacao||""} ${c.transportadoraNome||""} ${c.dataDespacho||""}`.toLowerCase();
       if(!blob.includes(term)) return false;
     }
     return true;
   });
 
-  const rows = filtered.map(c => `
-    <tr>
-      <td>
-        <strong>${esc(c.dataDespacho || "—")}</strong>
-        <div class="muted small">${esc(c.transportadoraNome || "")}</div>
-      </td>
-      <td>${esc(c.placa || "—")}<div class="muted small">${esc(c.motorista || "")}</div></td>
-      <td>
-        <span class="tag ${c.problema === "OK" ? "ok":"err"}">${esc(c.problema)}</span>
-        <div class="muted small">${esc(c.observacao || "")}</div>
-      </td>
-      <td>${Number(c.totalPedidos||0)} / ${Number(c.totalVolumes||0)}</td>
-      <td>
-        <div class="actions">
-          <button class="btn btnGhost" data-act="openC" data-id="${c.id}">Abrir</button>
+  const cards = filtered.map(c => {
+    const statusClass = c.problema === "OK" ? "ok" : "err";
+    const obs = (c.observacao || "").trim();
+
+    return `
+      <div class="cargaCard" data-id="${c.id}">
+        <div class="cargaTop">
+          <div class="cargaTitle">
+            <strong>${esc(c.dataDespacho || "—")}</strong>
+            <small title="${esc(c.transportadoraNome || "")}">${esc(c.transportadoraNome || "—")}</small>
+          </div>
+
+          <div class="cargaMeta">
+            <span class="tag ${statusClass}">${esc(c.problema)}</span>
+            <span class="badge">${Number(c.totalPedidos||0)} pedidos</span>
+          </div>
         </div>
-      </td>
-    </tr>
-  `).join("");
+
+        <div class="cargaInfo">
+          <div class="kpiBox">
+            <div class="k">Placa</div>
+            <div class="v">${esc(c.placa || "—")}</div>
+            <div class="muted small">${esc(c.motorista || "")}</div>
+          </div>
+
+          <div class="kpiBox">
+            <div class="k">Volumes</div>
+            <div class="v">${Number(c.totalVolumes||0)}</div>
+            <div class="muted small">Total na carga</div>
+          </div>
+        </div>
+
+        <div class="cargaObs">
+          ${obs ? esc(obs) : "Sem observação."}
+        </div>
+
+        <div class="cargaFooter">
+          <button class="btn btnGhost btnMini" data-act="toggleStatus" data-id="${c.id}">
+            Alternar OK/ERRO
+          </button>
+          <button class="btn btnMini" data-act="openC" data-id="${c.id}">
+            Abrir
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
 
   cargasList.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Data / Transportadora</th>
-          <th>Veículo</th>
-          <th>Status</th>
-          <th>Pedidos/Volumes</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows || `<tr><td colspan="5" class="muted">Nenhuma carga encontrada.</td></tr>`}
-      </tbody>
-    </table>
+    <div class="cargaGrid">
+      ${cards || `<div class="muted">Nenhuma carga encontrada.</div>`}
+    </div>
   `;
 
+  // eventos
   cargasList.querySelectorAll("button[data-act='openC']").forEach(btn => {
     btn.addEventListener("click", () => openCargaDetail(btn.dataset.id));
   });
+
+  cargasList.querySelectorAll("button[data-act='toggleStatus']").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const item = cacheCargas.find(x => x.id === id);
+      if(!item) return;
+
+      const next = item.problema === "OK" ? "ERRO" : "OK";
+      await updateDoc(doc(db, "cargas", id), {
+        problema: next,
+        updatedAt: serverTimestamp()
+      });
+
+      await loadCargas();
+      await renderDashboard();
+      // mantém no tab e refaz cards
+      renderCargasTable();
+    });
+  });
 }
+
 
 // ---------- DETAIL ----------
 btnCloseDetail.addEventListener("click", () => closeDetail());
