@@ -7,55 +7,105 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+
+  <!-- TOPBAR -->
   <header class="topbar">
-    <div class="brand">
-      <div class="logo">LG</div>
-      <div class="brandText">
-        <strong>Gestão de Logística</strong>
-        <small>Despacho • Cargas • Pedidos • Volumes</small>
+    <div class="left">
+      <button class="iconBtn" id="btnMenu" aria-label="Abrir menu">
+        <span class="burger"></span>
+      </button>
+
+      <div class="brand">
+        <div class="logo">LG</div>
+        <div class="brandText">
+          <strong>Gestão de Logística</strong>
+          <small>Despacho • Cargas • Pedidos • Volumes</small>
+        </div>
       </div>
     </div>
 
-    <div class="topActions">
+    <div class="right">
       <div id="userBadge" class="badge hidden"></div>
       <button id="btnLogout" class="btn btnGhost hidden">Sair</button>
     </div>
   </header>
 
   <!-- AUTH -->
-  <main id="authView" class="container">
-    <section class="card authCard">
-      <h1>Entrar</h1>
-      <p class="muted">Faça login para acessar o sistema.</p>
-
-      <div class="grid2">
-        <div class="field">
-          <label>Email</label>
-          <input id="loginEmail" type="email" placeholder="seuemail@exemplo.com" autocomplete="email" />
+  <main id="authView" class="page">
+    <section class="authShell">
+      <div class="authCard">
+        <div class="authHeader">
+          <h1>Entrar</h1>
+          <p class="muted">Faça login para acessar o sistema.</p>
         </div>
-        <div class="field">
-          <label>Senha</label>
-          <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+
+        <div class="formGrid">
+          <div class="field">
+            <label>Email</label>
+            <input id="loginEmail" type="email" placeholder="seuemail@exemplo.com" autocomplete="email" />
+          </div>
+
+          <div class="field">
+            <label>Senha</label>
+            <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="btnLogin" class="btn">Entrar</button>
+          <button id="btnRegister" class="btn btnOutline">Criar conta</button>
+        </div>
+
+        <div class="hint">
+          <span id="authMsg" class="muted"></span>
         </div>
       </div>
 
-      <div class="row">
-        <button id="btnLogin" class="btn">Entrar</button>
-        <button id="btnRegister" class="btn btnOutline">Criar conta</button>
-      </div>
+      <div class="authSide">
+        <div class="sideCard">
+          <h2>Controle total do despacho</h2>
+          <p class="muted">
+            Cadastre transportadoras, crie cargas, adicione pedidos e volumes e acompanhe ocorrências com OK/ERRO.
+          </p>
 
-      <div class="hint">
-        <span id="authMsg" class="muted"></span>
+          <div class="miniStats">
+            <div class="miniStat">
+              <span class="dot ok"></span>
+              <div>
+                <strong>OK</strong>
+                <small class="muted">cargas sem ocorrência</small>
+              </div>
+            </div>
+            <div class="miniStat">
+              <span class="dot err"></span>
+              <div>
+                <strong>ERRO</strong>
+                <small class="muted">com divergência/avaria</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="muted small">
+            Dica: rode via Live Server (http://...) para módulos funcionarem direitinho.
+          </div>
+        </div>
       </div>
     </section>
   </main>
 
   <!-- APP -->
-  <main id="appView" class="container hidden">
-    <div class="layout">
-      <!-- Sidebar -->
-      <aside class="sidebar card">
-        <h2>Navegação</h2>
+  <main id="appView" class="page hidden">
+    <!-- overlay (mobile) -->
+    <div class="overlay" id="overlay"></div>
+
+    <div class="appLayout">
+      <!-- SIDEBAR -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sideTop">
+          <h2>Navegação</h2>
+          <button class="iconBtn closeBtn" id="btnCloseMenu" aria-label="Fechar menu">×</button>
+        </div>
+
         <nav class="nav">
           <button class="navItem active" data-tab="dashboard">Dashboard</button>
           <button class="navItem" data-tab="transportadoras">Transportadoras</button>
@@ -71,7 +121,7 @@
         </div>
       </aside>
 
-      <!-- Content -->
+      <!-- CONTENT -->
       <section class="content">
         <!-- DASHBOARD -->
         <section id="tab-dashboard" class="card tab">
@@ -87,19 +137,25 @@
             </div>
           </div>
 
-          <div class="grid3">
-            <div class="mini card">
-              <h3>Últimas cargas</h3>
+          <div class="gridAuto3">
+            <div class="card inner">
+              <div class="cardTitle">
+                <h3>Últimas cargas</h3>
+              </div>
               <div id="dashLastCargas" class="list"></div>
             </div>
 
-            <div class="mini card">
-              <h3>Transportadoras</h3>
+            <div class="card inner">
+              <div class="cardTitle">
+                <h3>Transportadoras</h3>
+              </div>
               <div id="dashTransportadoras" class="list"></div>
             </div>
 
-            <div class="mini card">
-              <h3>Alertas (ERRO)</h3>
+            <div class="card inner">
+              <div class="cardTitle">
+                <h3>Alertas (ERRO)</h3>
+              </div>
               <div id="dashErros" class="list"></div>
             </div>
           </div>
@@ -114,31 +170,43 @@
             </div>
           </div>
 
-          <div class="grid2">
+          <div class="gridAuto2">
             <div class="card inner">
-              <h3>Nova transportadora</h3>
-              <div class="field">
-                <label>Nome</label>
-                <input id="tNome" placeholder="Ex: MV Transportes" />
+              <div class="cardTitle">
+                <h3>Nova transportadora</h3>
+                <p class="muted small">Cadastre nome, código e contato.</p>
               </div>
-              <div class="field">
-                <label>Código (opcional)</label>
-                <input id="tCodigo" placeholder="Ex: MV-003" />
+
+              <div class="formGrid">
+                <div class="field">
+                  <label>Nome</label>
+                  <input id="tNome" placeholder="Ex: MV Transportes" />
+                </div>
+                <div class="field">
+                  <label>Código (opcional)</label>
+                  <input id="tCodigo" placeholder="Ex: MV-003" />
+                </div>
+                <div class="field">
+                  <label>Contato (opcional)</label>
+                  <input id="tContato" placeholder="Telefone / WhatsApp / Email" />
+                </div>
               </div>
-              <div class="field">
-                <label>Contato (opcional)</label>
-                <input id="tContato" placeholder="Telefone / WhatsApp / Email" />
+
+              <div class="row">
+                <button id="btnAddTransportadora" class="btn">Salvar</button>
+                <div id="tMsg" class="muted small"></div>
               </div>
-              <button id="btnAddTransportadora" class="btn">Salvar</button>
-              <div id="tMsg" class="muted small mt8"></div>
             </div>
 
             <div class="card inner">
               <div class="rowBetween">
-                <h3>Lista</h3>
-                <input id="tSearch" class="search" placeholder="Buscar..." />
+                <div class="cardTitle">
+                  <h3>Lista</h3>
+                  <p class="muted small">Busque e edite rapidamente.</p>
+                </div>
+                <input id="tSearch" class="inputSm" placeholder="Buscar..." />
               </div>
-              <div id="transportadorasList" class="tableWrap"></div>
+              <div id="transportadorasList" class="tableWrap mt12"></div>
             </div>
           </div>
         </section>
@@ -152,35 +220,36 @@
             </div>
           </div>
 
-          <div class="grid2">
+          <div class="gridAuto2">
             <div class="card inner">
-              <h3>Nova carga</h3>
+              <div class="cardTitle">
+                <h3>Nova carga</h3>
+                <p class="muted small">Dados essenciais do despacho.</p>
+              </div>
 
-              <div class="grid2">
-                <div class="field">
-                  <label>Carga</label>
-                  <input id="cPlaca" placeholder="Ex:0001" />
-                </div>
-
-              <div class="grid2">
+              <div class="gridAuto2">
                 <div class="field">
                   <label>Transportadora</label>
                   <select id="cTransportadora"></select>
                 </div>
-
                 <div class="field">
                   <label>Data do despacho</label>
                   <input id="cData" type="date" />
                 </div>
               </div>
 
+              <div class="gridAuto2">
+                <div class="field">
+                  <label>Placa (opcional)</label>
+                  <input id="cPlaca" placeholder="ABC-1D23" />
+                </div>
                 <div class="field">
                   <label>Motorista (opcional)</label>
                   <input id="cMotorista" placeholder="Nome do motorista" />
                 </div>
               </div>
 
-              <div class="grid2">
+              <div class="gridAuto2">
                 <div class="field">
                   <label>Status do problema</label>
                   <select id="cProblema">
@@ -194,17 +263,22 @@
                 </div>
               </div>
 
-              <button id="btnAddCarga" class="btn">Criar carga</button>
-              <div id="cMsg" class="muted small mt8"></div>
+              <div class="row">
+                <button id="btnAddCarga" class="btn">Criar carga</button>
+                <div id="cMsg" class="muted small"></div>
+              </div>
             </div>
 
             <div class="card inner">
               <div class="rowBetween">
-                <h3>Pesquisar/filtrar</h3>
+                <div class="cardTitle">
+                  <h3>Cargas criadas</h3>
+                  <p class="muted small">Filtre e abra para editar pedidos/volumes.</p>
+                </div>
                 <button id="btnRefreshCargas" class="btn btnGhost">Atualizar</button>
               </div>
 
-              <div class="grid3">
+              <div class="gridAuto3 mt12">
                 <div class="field">
                   <label>Status</label>
                   <select id="fStatus">
@@ -223,7 +297,8 @@
                 </div>
               </div>
 
-              <div id="cargasList" class="tableWrap mt8"></div>
+              <!-- Aqui o app.js desenha cards/tabela -->
+              <div id="cargasList" class="cardsWrap mt12"></div>
             </div>
           </div>
 
@@ -239,21 +314,26 @@
               </div>
             </div>
 
-            <div id="cargaDetail" class="hidden">
+            <div id="cargaDetail" class="hidden mt12">
               <div class="detailGrid">
                 <div class="card inner">
-                  <h4>Resumo</h4>
+                  <div class="cardTitle">
+                    <h4>Resumo</h4>
+                  </div>
                   <div id="detailResumo" class="kv"></div>
 
-                  <div class="row mt8">
+                  <div class="row mt12">
                     <button id="btnToggleProblema" class="btn btnGhost">Alternar OK/ERRO</button>
                     <button id="btnEditObs" class="btn btnGhost">Editar observação</button>
                   </div>
                 </div>
 
                 <div class="card inner">
-                  <h4>Novo pedido</h4>
-                  <div class="grid2">
+                  <div class="cardTitle">
+                    <h4>Novo pedido</h4>
+                  </div>
+
+                  <div class="gridAuto2">
                     <div class="field">
                       <label>Nº do pedido</label>
                       <input id="pNumero" placeholder="Ex: 154987" />
@@ -263,7 +343,8 @@
                       <input id="pCliente" placeholder="Ex: Mercado X" />
                     </div>
                   </div>
-                  <div class="grid2">
+
+                  <div class="gridAuto2">
                     <div class="field">
                       <label>Volumes</label>
                       <input id="pVolumes" type="number" min="0" placeholder="0" />
@@ -273,18 +354,23 @@
                       <input id="pObs" placeholder="Ex: frágil / prioridade" />
                     </div>
                   </div>
-                  <button id="btnAddPedido" class="btn">Adicionar pedido</button>
-                  <div id="pMsg" class="muted small mt8"></div>
+
+                  <div class="row">
+                    <button id="btnAddPedido" class="btn">Adicionar pedido</button>
+                    <div id="pMsg" class="muted small"></div>
+                  </div>
                 </div>
 
                 <div class="card inner">
-                  <h4>Pedidos na carga</h4>
-                  <div id="pedidosList" class="tableWrap"></div>
+                  <div class="cardTitle">
+                    <h4>Pedidos na carga</h4>
+                  </div>
+                  <div id="pedidosList" class="tableWrap mt12"></div>
                 </div>
               </div>
             </div>
 
-            <div id="detailEmpty" class="empty">
+            <div id="detailEmpty" class="empty mt12">
               Nenhuma carga selecionada.
             </div>
           </div>
@@ -299,7 +385,7 @@
             </div>
           </div>
 
-          <div class="grid3">
+          <div class="gridAuto3">
             <div class="field">
               <label>De</label>
               <input id="rDe" type="date" />
@@ -316,11 +402,15 @@
 
           <div class="card inner mt16">
             <div class="rowBetween">
-              <h3>Resultado</h3>
+              <div class="cardTitle">
+                <h3>Resultado</h3>
+                <p class="muted small">Você pode exportar em CSV.</p>
+              </div>
               <button id="btnExportCSV" class="btn btnOutline hidden">Exportar CSV</button>
             </div>
-            <div id="relatorioResumo" class="muted small mt8"></div>
-            <div id="relatorioTabela" class="tableWrap mt8"></div>
+
+            <div id="relatorioResumo" class="muted small mt12"></div>
+            <div id="relatorioTabela" class="tableWrap mt12"></div>
           </div>
         </section>
 
@@ -334,7 +424,9 @@
           </div>
 
           <div class="card inner">
-            <h3>Modelo de dados (Firestore)</h3>
+            <div class="cardTitle">
+              <h3>Modelo de dados (Firestore)</h3>
+            </div>
             <pre class="codeBlock">transportadoras (collection)
   - nome (string)
   - codigo (string)
@@ -344,7 +436,7 @@
 
 cargas (collection)
   - transportadoraId (string)
-  - transportadoraNome (string) // denormalizado
+  - transportadoraNome (string)
   - dataDespacho (string YYYY-MM-DD)
   - placa (string)
   - motorista (string)
@@ -365,7 +457,9 @@ cargas/{cargaId}/pedidos (subcollection)
           </div>
 
           <div class="card inner mt16">
-            <h3>Regras sugeridas (Security Rules)</h3>
+            <div class="cardTitle">
+              <h3>Regras sugeridas (Security Rules)</h3>
+            </div>
             <p class="muted small">Cole no Firebase Console &gt; Firestore Rules.</p>
             <pre class="codeBlock">rules_version = '2';
 service cloud.firestore {
@@ -387,6 +481,7 @@ service cloud.firestore {
 }</pre>
           </div>
         </section>
+
       </section>
     </div>
   </main>
@@ -395,6 +490,34 @@ service cloud.firestore {
     <small class="muted">© <span id="year"></span> • Sistema de Gestão de Logística</small>
   </footer>
 
+  <!-- mantém seu app.js intacto -->
   <script type="module" src="app.js"></script>
+
+  <!-- JS leve só pro menu mobile (não encosta no app.js) -->
+  <script>
+    (function(){
+      const btnMenu = document.getElementById("btnMenu");
+      const btnClose = document.getElementById("btnCloseMenu");
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("overlay");
+
+      function openMenu(){
+        document.body.classList.add("menuOpen");
+      }
+      function closeMenu(){
+        document.body.classList.remove("menuOpen");
+      }
+
+      if(btnMenu) btnMenu.addEventListener("click", openMenu);
+      if(btnClose) btnClose.addEventListener("click", closeMenu);
+      if(overlay) overlay.addEventListener("click", closeMenu);
+
+      // fecha menu ao clicar em um item (mobile)
+      document.addEventListener("click", (e) => {
+        const t = e.target;
+        if(t && t.classList && t.classList.contains("navItem")) closeMenu();
+      });
+    })();
+  </script>
 </body>
 </html>
